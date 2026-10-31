@@ -42,7 +42,6 @@ from .const import (
     CONF_START_DELAY_S,
     CONF_STOP_DELAY_S,
     CONF_THRESHOLD_W,
-    CURRENCY,
     DOMAIN,
     EVENT_CHARGE_DISCARDED,
     EVENT_CHARGE_ENDED,
@@ -50,7 +49,7 @@ from .const import (
     PRICE_MODE_ENTITY,
 )
 from .session import DetectionConfig, Outcome, SessionEvent, SessionMachine
-from .units import parse_float, price_to_eur_per_kwh
+from .units import parse_float, price_per_kwh
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,10 +86,11 @@ def _convert(
         return None
 
 
-def _price(state: State | None) -> float | None:
+def _price(state: State | None, currency: str) -> float | None:
     if state is None or (value := parse_float(state.state)) is None:
         return None
-    return price_to_eur_per_kwh(value, state.attributes.get(ATTR_UNIT_OF_MEASUREMENT))
+    unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+    return price_per_kwh(value, unit, currency)
 
 
 class ChargeTracker:
@@ -101,6 +101,8 @@ class ChargeTracker:
         self.entry_id = entry.entry_id
         config = {**entry.data, **entry.options}
         self.name: str = config.get(CONF_NAME, entry.title)
+        # ISO 4217 code configured in Home Assistant; prices are per kWh in it.
+        self.currency: str = hass.config.currency
         self.power_entity: str = config[CONF_POWER_ENTITY]
         self.energy_entity: str | None = config.get(CONF_ENERGY_ENTITY)
         self.price_entity: str | None = (
@@ -140,7 +142,9 @@ class ChargeTracker:
         if self._fixed_price is not None:
             self.machine.update_price(now, self._fixed_price)
         else:
-            self.machine.update_price(now, _price(self._state(self.price_entity)))
+            self.machine.update_price(
+                now, _price(self._state(self.price_entity), self.currency)
+            )
         self._publish(self.machine.update_power(now, self._read_power()))
 
         self._track(self.power_entity, self._on_power)
@@ -200,7 +204,7 @@ class ChargeTracker:
     @callback
     def _on_price(self, event: Event[EventStateChangedData]) -> None:
         now = dt_util.utcnow()
-        self.machine.update_price(now, _price(event.data["new_state"]))
+        self.machine.update_price(now, _price(event.data["new_state"], self.currency))
         self._publish(self.machine.check(now))
 
     @callback
@@ -224,7 +228,7 @@ class ChargeTracker:
             if event is SessionEvent.STARTED:
                 payload["start"] = session.start.isoformat()
             else:
-                payload.update(session.summary(), currency=CURRENCY)
+                payload.update(session.summary(), currency=self.currency)
             _LOGGER.debug("%s: %s", _EVENTS[event], payload)
             self.hass.bus.async_fire(_EVENTS[event], payload)
 

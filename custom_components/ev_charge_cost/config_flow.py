@@ -40,7 +40,7 @@ from .const import (
     PRICE_MODE_ENTITY,
     PRICE_MODE_FIXED,
 )
-from .units import price_to_eur_per_kwh
+from .units import currency_symbol, price_per_kwh
 
 
 def _number(
@@ -101,11 +101,15 @@ PRICE_MODE_SCHEMA = vol.Schema(
     }
 )
 
-PRICE_FIXED_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_PRICE_FIXED): _number(0, 10, "any", "€/kWh"),
-    }
-)
+
+def _price_fixed_schema(hass: HomeAssistant) -> vol.Schema:
+    unit = f"{currency_symbol(hass.config.currency)}/{UnitOfEnergy.KILO_WATT_HOUR}"
+    return vol.Schema({vol.Required(CONF_PRICE_FIXED): _number(0, 1000, "any", unit)})
+
+
+def _placeholders(hass: HomeAssistant) -> dict[str, str]:
+    return {"currency": currency_symbol(hass.config.currency)}
+
 
 PRICE_ENTITY_SCHEMA = vol.Schema(
     {
@@ -117,12 +121,12 @@ PRICE_ENTITY_SCHEMA = vol.Schema(
 
 
 def _validate_price_entity(hass: HomeAssistant, entity_id: str) -> dict[str, str]:
-    """Reject a price entity whose unit cannot be converted to EUR/kWh."""
+    """Reject a price entity whose unit cannot be converted to <currency>/kWh."""
     state = hass.states.get(entity_id)
     if state is None:
         return {}
     unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-    if price_to_eur_per_kwh(1.0, unit) is None:
+    if price_per_kwh(1.0, unit, hass.config.currency) is None:
         return {CONF_PRICE_ENTITY: "unsupported_price_unit"}
     return {}
 
@@ -179,7 +183,9 @@ class EvChargeCostConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data.update(user_input)
             return self._create()
         return self.async_show_form(
-            step_id="price_fixed", data_schema=PRICE_FIXED_SCHEMA
+            step_id="price_fixed",
+            data_schema=_price_fixed_schema(self.hass),
+            description_placeholders=_placeholders(self.hass),
         )
 
     async def async_step_price_entity(
@@ -192,7 +198,10 @@ class EvChargeCostConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._data.update(user_input)
                 return self._create()
         return self.async_show_form(
-            step_id="price_entity", data_schema=PRICE_ENTITY_SCHEMA, errors=errors
+            step_id="price_entity",
+            data_schema=PRICE_ENTITY_SCHEMA,
+            errors=errors,
+            description_placeholders=_placeholders(self.hass),
         )
 
     def _create(self) -> ConfigFlowResult:
@@ -248,8 +257,9 @@ class EvChargeCostOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="price_fixed",
             data_schema=self.add_suggested_values_to_schema(
-                PRICE_FIXED_SCHEMA, self._current
+                _price_fixed_schema(self.hass), self._current
             ),
+            description_placeholders=_placeholders(self.hass),
         )
 
     async def async_step_price_entity(
@@ -267,4 +277,5 @@ class EvChargeCostOptionsFlow(OptionsFlow):
                 PRICE_ENTITY_SCHEMA, self._current
             ),
             errors=errors,
+            description_placeholders=_placeholders(self.hass),
         )

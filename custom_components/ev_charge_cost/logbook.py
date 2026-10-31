@@ -19,19 +19,22 @@ from .const import (
     EVENT_CHARGE_ENDED,
     EVENT_CHARGE_STARTED,
 )
+from .units import currency_symbol
 
 # Logbook messages are not translatable through strings.json. The frontend
 # prints them after the name of the linked `charging` entity, hence the dash.
 _MESSAGES = {
     "en": {
         EVENT_CHARGE_STARTED: "— session started",
-        EVENT_CHARGE_ENDED: "— session ended: {energy} kWh, {cost} € in {duration}",
+        EVENT_CHARGE_ENDED: (
+            "— session ended: {energy} kWh, {cost} {currency} in {duration}"
+        ),
         EVENT_CHARGE_DISCARDED: "— short session discarded ({energy} kWh)",
     },
     "fr": {
         EVENT_CHARGE_STARTED: "— session démarrée",
         EVENT_CHARGE_ENDED: (
-            "— session terminée : {energy} kWh, {cost} € en {duration}"
+            "— session terminée : {energy} kWh, {cost} {currency} en {duration}"
         ),
         EVENT_CHARGE_DISCARDED: "— session trop courte ignorée ({energy} kWh)",
     },
@@ -57,6 +60,7 @@ def async_describe_events(
             energy=data.get("energy_kwh"),
             cost=f"{data.get('cost', 0):.2f}",
             duration=_duration(data.get("duration_s", 0)),
+            currency=currency_symbol(data.get("currency", hass.config.currency)),
         )
         entry: dict[str, Any] = {
             LOGBOOK_ENTRY_NAME: data.get("name", DOMAIN),

@@ -3,7 +3,7 @@
 Home Assistant integration (distributed through HACS) that automatically detects
 the charging sessions of an electric vehicle plugged into a monitored outlet or
 circuit, and records for each session its **duration**, **energy (kWh)** and
-**cost (€)**.
+**cost** (in the currency configured in Home Assistant).
 
 ## 1. Context / reference hardware
 
@@ -48,10 +48,15 @@ near the end of the charge / battery balancing).
 
 ### Step 3 — Price
 Either:
-- **Fixed**: price in €/kWh (number, e.g. `0.2516`).
+All prices and costs use the **currency configured in Home Assistant**
+(Settings → System → General), shown below as € for the reference setup.
+
+- **Fixed**: price per kWh (number, e.g. `0.2516`).
 - **Entity**: entity selector on a `sensor` / `input_number` / `number`
-  giving the kWh price. Accepted units: `€/kWh`, `EUR/kWh`, `c€/kWh`,
-  `ct/kWh`, `€/MWh` (converted automatically); no unit → treated as €/kWh. An
+  giving the kWh price. Accepted units: the currency code or symbol per `Wh`,
+  `kWh` or `MWh` (`€/kWh`, `EUR/MWh`, `$/kWh`…), or cents of it (`c€/kWh`,
+  `ct/kWh`, `¢/kWh`, `p/kWh` for GBP), converted automatically; no unit →
+  treated as <currency>/kWh. An
   entity with any other unit is rejected by the flow.
 
 Every setting can be changed later through the **options flow** without
@@ -130,7 +135,7 @@ session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
 | `sensor.<name>_total_energy` | kWh, `total_increasing` | Sum over all sessions (usable in the Energy dashboard) |
 | `sensor.<name>_total_cost` | €, `total` | Sum of costs; `last_reset` is set by `reset_totals` so statistics do not record a negative cost |
 | `sensor.<name>_sessions` | counter | Number of kept sessions |
-| `sensor.<name>_current_price` | EUR/kWh (diagnostic) | Price currently applied (fixed or entity) |
+| `sensor.<name>_current_price` | <currency>/kWh (diagnostic) | Price currently applied (fixed or entity) |
 
 All entities belong to one service device named after the charge point.
 
@@ -156,7 +161,7 @@ end: "2026-10-31T04:12:40+01:00"
 duration_s: 23370
 energy_kwh: 22.84
 cost: 4.19
-currency: EUR
+currency: EUR  # Home Assistant currency
 avg_price: 0.1835
 price_estimated: false
 tranches:

@@ -41,7 +41,7 @@
           "price_fixed": "Price"
         },
         "data_description": {
-          "price_fixed": "Price per kWh in euros."
+          "price_fixed": "Price per kWh, in {currency}."
         }
       },
       "price_entity": {
@@ -50,12 +50,12 @@
           "price_entity": "Price entity"
         },
         "data_description": {
-          "price_entity": "Entity giving the kWh price (€/kWh, c€/kWh or €/MWh). Price changes during a session are taken into account."
+          "price_entity": "Entity giving the kWh price ({currency}/kWh, cents/kWh or {currency}/MWh). Price changes during a session are taken into account."
         }
       }
     },
     "error": {
-      "unsupported_price_unit": "Unsupported unit: use €/kWh, c€/kWh or €/MWh."
+      "unsupported_price_unit": "Unsupported unit: use {currency}/kWh, cents/kWh or {currency}/MWh."
     },
     "abort": {
       "already_configured": "This power sensor is already tracked."
@@ -94,7 +94,7 @@
           "price_fixed": "Price"
         },
         "data_description": {
-          "price_fixed": "Price per kWh in euros."
+          "price_fixed": "Price per kWh, in {currency}."
         }
       },
       "price_entity": {
@@ -103,12 +103,12 @@
           "price_entity": "Price entity"
         },
         "data_description": {
-          "price_entity": "Entity giving the kWh price (€/kWh, c€/kWh or €/MWh). Price changes during a session are taken into account."
+          "price_entity": "Entity giving the kWh price ({currency}/kWh, cents/kWh or {currency}/MWh). Price changes during a session are taken into account."
         }
       }
     },
     "error": {
-      "unsupported_price_unit": "Unsupported unit: use €/kWh, c€/kWh or €/MWh."
+      "unsupported_price_unit": "Unsupported unit: use {currency}/kWh, cents/kWh or {currency}/MWh."
     }
   },
   "selector": {

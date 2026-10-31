@@ -187,3 +187,33 @@ async def test_force_stop_and_reset_totals(
 
     tracker.async_reset_totals()
     assert tracker.machine.totals.count == 0
+
+
+async def test_uses_home_assistant_currency(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, events
+) -> None:
+    hass.config.currency = "USD"
+    _set(hass, POWER, 0, W)
+    _set(hass, ENERGY, 100, KWH)
+    _set(hass, PRICE, 30, {"unit_of_measurement": "¢/kWh"})
+    await _setup(hass, **{CONF_PRICE_MODE: PRICE_MODE_ENTITY, CONF_PRICE_ENTITY: PRICE})
+    assert hass.states.get("sensor.voiture_current_price").state == "0.3"
+    assert (
+        hass.states.get("sensor.voiture_current_price").attributes[
+            "unit_of_measurement"
+        ]
+        == "USD/kWh"
+    )
+    assert (
+        hass.states.get("sensor.voiture_total_cost").attributes["unit_of_measurement"]
+        == "USD"
+    )
+
+    _set(hass, POWER, 3700, W)
+    await _advance(hass, freezer, 60)
+    _set(hass, ENERGY, 102, KWH)
+    _set(hass, POWER, 0, W)
+    await _advance(hass, freezer, 120)
+    (ended,) = events[EVENT_CHARGE_ENDED]
+    assert ended.data["currency"] == "USD"
+    assert ended.data["cost"] == 0.6

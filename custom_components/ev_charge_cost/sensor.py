@@ -19,11 +19,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import EvChargeCostConfigEntry
-from .const import CURRENCY
 from .entity import EvChargeCostEntity
 from .session import ChargeSession, SessionMachine
-
-PRICE_UNIT = f"{CURRENCY}/{UnitOfEnergy.KILO_WATT_HOUR}"
+from .tracker import ChargeTracker
 
 
 def _minutes(session: ChargeSession) -> float:
@@ -48,6 +46,8 @@ class EvChargeCostSensorDescription(SensorEntityDescription):
     value_fn: Callable[[SessionMachine], Any]
     attrs_fn: Callable[[SessionMachine], dict[str, Any] | None] = lambda _: None
     last_reset_fn: Callable[[SessionMachine], datetime | None] = lambda _: None
+    # Unit built from the Home Assistant currency (e.g. "EUR", "EUR/kWh").
+    currency_unit_fn: Callable[[str], str] | None = None
 
 
 def _energy(key: str, state_class: SensorStateClass | None, value_fn):
@@ -68,7 +68,7 @@ def _cost(key: str, state_class: SensorStateClass | None, value_fn, **kwargs):
         translation_key=key,
         device_class=SensorDeviceClass.MONETARY,
         state_class=state_class,
-        native_unit_of_measurement=CURRENCY,
+        currency_unit_fn=lambda currency: currency,
         suggested_display_precision=2,
         value_fn=value_fn,
         **kwargs,
@@ -120,7 +120,7 @@ SENSORS: tuple[EvChargeCostSensorDescription, ...] = (
     EvChargeCostSensorDescription(
         key="current_price",
         translation_key="current_price",
-        native_unit_of_measurement=PRICE_UNIT,
+        currency_unit_fn=lambda c: f"{c}/{UnitOfEnergy.KILO_WATT_HOUR}",
         suggested_display_precision=4,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda m: m.price,
@@ -139,6 +139,15 @@ async def async_setup_entry(
 
 class EvChargeCostSensor(EvChargeCostEntity, SensorEntity):
     entity_description: EvChargeCostSensorDescription
+
+    def __init__(
+        self, tracker: ChargeTracker, description: EvChargeCostSensorDescription
+    ) -> None:
+        super().__init__(tracker, description)
+        if description.currency_unit_fn:
+            self._attr_native_unit_of_measurement = description.currency_unit_fn(
+                tracker.currency
+            )
 
     @property
     def native_value(self) -> Any:

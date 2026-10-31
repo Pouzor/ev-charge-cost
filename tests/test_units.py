@@ -2,7 +2,11 @@
 
 import pytest
 
-from custom_components.ev_charge_cost.units import parse_float, price_to_eur_per_kwh
+from custom_components.ev_charge_cost.units import (
+    currency_symbol,
+    parse_float,
+    price_per_kwh,
+)
 
 
 @pytest.mark.parametrize(
@@ -22,17 +26,38 @@ def test_parse_float(state, expected):
 
 
 @pytest.mark.parametrize(
-    ("unit", "expected"),
+    ("unit", "currency", "expected"),
     [
-        (None, 25.0),
-        ("", 25.0),
-        ("€/kWh", 25.0),
-        ("EUR/kWh", 25.0),
-        ("c€/kWh", 0.25),
-        ("€ / MWh", 0.025),
-        ("W", None),
+        (None, "EUR", 25.0),
+        ("", "EUR", 25.0),
+        ("€/kWh", "EUR", 25.0),
+        ("EUR/kWh", "EUR", 25.0),
+        ("c€/kWh", "EUR", 0.25),
+        ("ct/kWh", "EUR", 0.25),
+        ("€ / MWh", "EUR", 0.025),
+        ("€/Wh", "EUR", 25000.0),
+        ("$/kWh", "USD", 25.0),
+        ("USD/kWh", "USD", 25.0),
+        ("¢/kWh", "USD", 0.25),
+        ("cents/kWh", "USD", 0.25),
+        ("p/kWh", "GBP", 0.25),
+        ("£/kWh", "GBP", 25.0),
+        ("SEK/kWh", "SEK", 25.0),
+        ("öre/kWh", "SEK", None),
+        ("€/kWh", "USD", None),
+        ("p/kWh", "EUR", None),
+        ("W", "EUR", None),
+        ("€", "EUR", None),
     ],
 )
-def test_price_to_eur_per_kwh(unit, expected):
-    result = price_to_eur_per_kwh(25.0, unit)
-    assert result == pytest.approx(expected) if expected is not None else result is None
+def test_price_per_kwh(unit, currency, expected):
+    result = price_per_kwh(25.0, unit, currency)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == pytest.approx(expected)
+
+
+def test_currency_symbol():
+    assert currency_symbol("EUR") == "€"
+    assert currency_symbol("SEK") == "SEK"

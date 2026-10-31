@@ -24,8 +24,6 @@ DEFAULT_START_DELAY_S: Final = 30
 DEFAULT_STOP_DELAY_S: Final = 120
 DEFAULT_MIN_ENERGY_KWH: Final = 0.1
 
-CURRENCY: Final = "EUR"
-
 # Bus events
 EVENT_CHARGE_STARTED: Final = f"{DOMAIN}_charge_started"
 EVENT_CHARGE_ENDED: Final = f"{DOMAIN}_charge_ended"

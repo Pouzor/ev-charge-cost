@@ -120,3 +120,17 @@ async def test_logbook_messages(
         )
     )
     assert end["message"] == ended
+
+    dollars = describers[EVENT_CHARGE_ENDED](
+        Event(
+            EVENT_CHARGE_ENDED,
+            {
+                **base,
+                "energy_kwh": 1,
+                "cost": 0.3,
+                "duration_s": 600,
+                "currency": "USD",
+            },
+        )
+    )
+    assert "0.30 $" in dollars["message"]

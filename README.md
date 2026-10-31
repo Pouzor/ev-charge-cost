@@ -10,7 +10,7 @@
 
 Home Assistant integration (HACS) that automatically detects the charging
 sessions of an electric vehicle from a monitored outlet or current clamp, and
-records the **duration**, **energy (kWh)** and **cost (€)** of each session —
+records the **duration**, **energy (kWh)** and **cost** of each session —
 with a fixed price or a price entity, including when the price changes during
 the charge (off-peak / peak hours).
 
@@ -27,7 +27,8 @@ the charge (off-peak / peak hours).
 - **Power sensor** (W/kW) — required, used to detect charging.
 - **Energy meter** (cumulative kWh) — optional, more accurate than integrating the power.
 - **Detection** — threshold (200 W by default), start / stop delays, minimum energy.
-- **Price** — fixed (€/kWh) or an entity (€/kWh, c€/kWh, €/MWh).
+- **Price** — fixed or an entity (e.g. €/kWh, c€/kWh, €/MWh). Prices and
+  costs use the currency configured in Home Assistant.
 
 All settings can be changed later from the integration options.
 
@@ -54,7 +55,7 @@ actions:
     data:
       message: >
         Charge finished: {{ trigger.event.data.energy_kwh }} kWh,
-        {{ trigger.event.data.cost }} € in
+        {{ trigger.event.data.cost }} {{ trigger.event.data.currency }} in
         {{ (trigger.event.data.duration_s / 60) | round }} min.
 ```
 

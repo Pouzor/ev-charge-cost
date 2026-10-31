@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import math
 
-# Factor converting a price expressed in the key unit to EUR/kWh.
-_PRICE_FACTORS: dict[str, float] = {
-    "€/kwh": 1.0,
-    "eur/kwh": 1.0,
-    "c€/kwh": 0.01,
-    "ct/kwh": 0.01,
-    "cts/kwh": 0.01,
-    "€/mwh": 0.001,
-    "eur/mwh": 0.001,
+# Symbols accepted, besides the ISO 4217 code, for the main currencies.
+_SYMBOLS: dict[str, str] = {
+    "EUR": "€",
+    "USD": "$",
+    "GBP": "£",
+    "JPY": "¥",
+    "CNY": "¥",
+    "INR": "₹",
+    "KRW": "₩",
+    "CHF": "Fr.",
 }
+# Words for a hundredth of any currency (c€, ct, cents, ¢, …).
+_CENTS = {"c", "ct", "cts", "cent", "cents", "¢"}
+# Factor converting a price per <key> to a price per kWh.
+_ENERGY: dict[str, float] = {"wh": 1000.0, "kwh": 1.0, "mwh": 0.001}
 
 
 def parse_float(state: str | None) -> float | None:
@@ -27,12 +32,31 @@ def parse_float(state: str | None) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def price_to_eur_per_kwh(value: float, unit: str | None) -> float | None:
-    """Normalize a price to EUR/kWh; None if the unit is not supported.
+def currency_symbol(currency: str) -> str:
+    """Symbol of an ISO 4217 currency, or the code itself."""
+    return _SYMBOLS.get(currency, currency)
 
-    A missing unit is interpreted as EUR/kWh.
+
+def price_per_kwh(value: float, unit: str | None, currency: str) -> float | None:
+    """Normalize a price to <currency>/kWh; None if the unit is not supported.
+
+    A missing unit is interpreted as <currency>/kWh. The money part may be the
+    currency code or symbol, or cents of it (c€, ct, ¢, p for GBP…).
     """
     if not unit:
         return value
-    factor = _PRICE_FACTORS.get(unit.replace(" ", "").lower())
-    return value * factor if factor is not None else None
+    money, slash, energy = unit.replace(" ", "").lower().partition("/")
+    if not slash or energy not in _ENERGY:
+        return None
+    names = {currency.lower(), currency_symbol(currency).lower()}
+    if money in names:
+        factor = 1.0
+    elif (
+        money in _CENTS
+        or (money[:1] == "c" and money[1:] in names)
+        or (money == "p" and currency == "GBP")
+    ):
+        factor = 0.01
+    else:
+        return None
+    return value * factor * _ENERGY[energy]
