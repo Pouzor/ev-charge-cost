@@ -128,7 +128,7 @@ coût_session += delta_kWh × prix_kWh_en_vigueur_au_moment_du_delta
 | `sensor.<nom>_last_session_duration` | durée (min) | Durée de la dernière session |
 | `sensor.<nom>_total_energy` | kWh, `total_increasing` | Cumul de toutes les sessions (utilisable dans le tableau Énergie) |
 | `sensor.<nom>_total_cost` | €, `total_increasing` | Cumul des coûts |
-| `sensor.<nom>_session_count` | compteur | Nombre de sessions retenues |
+| `sensor.<nom>_sessions` | compteur | Nombre de sessions retenues |
 | `sensor.<nom>_current_price` | €/kWh | Prix utilisé actuellement (fixe ou entité) |
 
 Toutes les entités sont rattachées à un device « EV Charge Cost – <nom> ».

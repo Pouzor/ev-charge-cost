@@ -7,3 +7,7 @@ __pycache__/
 htmlcov/
 .DS_Store
 dev-config/
+
+# Local Claude
+.claude/
+CLAUDE.md

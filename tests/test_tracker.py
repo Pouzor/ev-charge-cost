@@ -1,87 +1,24 @@
 """Integration tests for the tracker running inside hass."""
 
-from datetime import timedelta
-from typing import Any
-
 import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
-    async_capture_events,
-    async_fire_time_changed,
-)
 
 from custom_components.ev_charge_cost.const import (
     CONF_ENERGY_ENTITY,
-    CONF_MIN_ENERGY_KWH,
-    CONF_POWER_ENTITY,
     CONF_PRICE_ENTITY,
-    CONF_PRICE_FIXED,
     CONF_PRICE_MODE,
-    CONF_START_DELAY_S,
-    CONF_STOP_DELAY_S,
-    CONF_THRESHOLD_W,
-    DOMAIN,
     EVENT_CHARGE_DISCARDED,
     EVENT_CHARGE_ENDED,
     EVENT_CHARGE_STARTED,
     PRICE_MODE_ENTITY,
-    PRICE_MODE_FIXED,
 )
 from custom_components.ev_charge_cost.session import State
 
-POWER = "sensor.ev_power"
-ENERGY = "sensor.ev_energy"
-PRICE = "sensor.kwh_price"
-W = {"unit_of_measurement": "W"}
-KWH = {"unit_of_measurement": "kWh"}
-
-
-def _data(**overrides: Any) -> dict[str, Any]:
-    return {
-        CONF_NAME: "Voiture",
-        CONF_POWER_ENTITY: POWER,
-        CONF_ENERGY_ENTITY: ENERGY,
-        CONF_THRESHOLD_W: 200,
-        CONF_START_DELAY_S: 30,
-        CONF_STOP_DELAY_S: 120,
-        CONF_MIN_ENERGY_KWH: 0.1,
-        CONF_PRICE_MODE: PRICE_MODE_FIXED,
-        CONF_PRICE_FIXED: 0.25,
-        **overrides,
-    }
-
-
-async def _setup(hass: HomeAssistant, **overrides: Any) -> MockConfigEntry:
-    entry = MockConfigEntry(
-        domain=DOMAIN, unique_id=POWER, title="Voiture", data=_data(**overrides)
-    )
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    return entry
-
-
-async def _advance(
-    hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float
-) -> None:
-    freezer.tick(timedelta(seconds=seconds))
-    async_fire_time_changed(hass)
-    await hass.async_block_till_done()
-
-
-def _set(hass: HomeAssistant, entity_id: str, value: float, attrs: dict) -> None:
-    hass.states.async_set(entity_id, str(value), attrs)
-
-
-@pytest.fixture
-def events(hass: HomeAssistant) -> dict[str, list]:
-    return {
-        name: async_capture_events(hass, name)
-        for name in (EVENT_CHARGE_STARTED, EVENT_CHARGE_ENDED, EVENT_CHARGE_DISCARDED)
-    }
+from .helpers import ENERGY, KWH, POWER, PRICE, W
+from .helpers import advance as _advance
+from .helpers import set_state as _set
+from .helpers import setup_entry as _setup
 
 
 async def test_session_with_energy_meter(

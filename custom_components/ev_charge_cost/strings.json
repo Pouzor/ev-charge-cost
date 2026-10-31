@@ -118,5 +118,74 @@
         "entity": "Price from an entity"
       }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "charging": {
+        "name": "Charging"
+      }
+    },
+    "sensor": {
+      "session_energy": {
+        "name": "Session energy"
+      },
+      "session_cost": {
+        "name": "Session cost"
+      },
+      "session_duration": {
+        "name": "Session duration"
+      },
+      "last_session_energy": {
+        "name": "Last session energy"
+      },
+      "last_session_cost": {
+        "name": "Last session cost"
+      },
+      "last_session_duration": {
+        "name": "Last session duration"
+      },
+      "total_energy": {
+        "name": "Total energy"
+      },
+      "total_cost": {
+        "name": "Total cost"
+      },
+      "session_count": {
+        "name": "Sessions"
+      },
+      "current_price": {
+        "name": "Current price"
+      }
+    }
+  },
+  "services": {
+    "stop_session": {
+      "name": "Stop session",
+      "description": "Ends the charge session in progress now and fires the charge_ended event.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Charge point",
+          "description": "Charge point whose session to stop."
+        }
+      }
+    },
+    "reset_totals": {
+      "name": "Reset totals",
+      "description": "Resets the total energy, total cost and session count.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Charge point",
+          "description": "Charge point whose totals to reset."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "No EV Charge Cost charge point with ID {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "Charge point {name} is not loaded."
+    }
   }
 }

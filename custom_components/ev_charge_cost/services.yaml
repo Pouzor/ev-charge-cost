@@ -1,0 +1,15 @@
+stop_session:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: ev_charge_cost
+
+reset_totals:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: ev_charge_cost

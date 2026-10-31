@@ -118,5 +118,74 @@
         "entity": "Prix depuis une entité"
       }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "charging": {
+        "name": "En charge"
+      }
+    },
+    "sensor": {
+      "session_energy": {
+        "name": "Énergie de la session"
+      },
+      "session_cost": {
+        "name": "Coût de la session"
+      },
+      "session_duration": {
+        "name": "Durée de la session"
+      },
+      "last_session_energy": {
+        "name": "Énergie dernière session"
+      },
+      "last_session_cost": {
+        "name": "Coût dernière session"
+      },
+      "last_session_duration": {
+        "name": "Durée dernière session"
+      },
+      "total_energy": {
+        "name": "Énergie totale"
+      },
+      "total_cost": {
+        "name": "Coût total"
+      },
+      "session_count": {
+        "name": "Sessions"
+      },
+      "current_price": {
+        "name": "Prix actuel"
+      }
+    }
+  },
+  "services": {
+    "stop_session": {
+      "name": "Arrêter la session",
+      "description": "Termine immédiatement la session en cours et émet l'événement charge_ended.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Point de charge",
+          "description": "Point de charge dont la session doit être arrêtée."
+        }
+      }
+    },
+    "reset_totals": {
+      "name": "Remettre à zéro les totaux",
+      "description": "Remet à zéro l'énergie totale, le coût total et le nombre de sessions.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Point de charge",
+          "description": "Point de charge dont les totaux doivent être remis à zéro."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "Aucun point de charge EV Charge Cost avec l'ID {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "Le point de charge {name} n'est pas chargé."
+    }
   }
 }

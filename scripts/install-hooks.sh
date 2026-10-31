@@ -21,7 +21,7 @@ if echo "$STAGED" | grep -qE "\.(py|json)$"; then
     .venv/bin/ruff format --check .
     .venv/bin/pytest -q
   else
-    echo "  (skipping — .venv missing; see CLAUDE.md to enable.)"
+    echo "  (skipping — .venv missing; see README.md to enable.)"
   fi
 fi
 
