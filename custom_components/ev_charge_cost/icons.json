@@ -1,0 +1,42 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "charging": {
+        "default": "mdi:ev-station",
+        "state": {
+          "on": "mdi:battery-charging"
+        }
+      }
+    },
+    "calendar": {
+      "history": {
+        "default": "mdi:history"
+      }
+    },
+    "sensor": {
+      "session_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "last_session_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "total_cost": {
+        "default": "mdi:cash-multiple"
+      },
+      "session_count": {
+        "default": "mdi:counter"
+      },
+      "current_price": {
+        "default": "mdi:cash-clock"
+      }
+    }
+  },
+  "services": {
+    "stop_session": {
+      "service": "mdi:stop-circle-outline"
+    },
+    "reset_totals": {
+      "service": "mdi:restore"
+    }
+  }
+}
