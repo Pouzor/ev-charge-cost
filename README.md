@@ -1,35 +1,65 @@
 # EV Charge Cost
 
-Intégration Home Assistant (HACS) qui détecte automatiquement les recharges
-d'un véhicule électrique à partir d'une prise ou pince ampèremétrique
-monitorée, et enregistre pour chaque session la **durée**, l'**énergie (kWh)**
-et le **coût (€)** — avec un prix fixe ou issu d'une entité, y compris quand le
-prix change pendant la charge (heures creuses / pleines).
+Home Assistant integration (HACS) that automatically detects the charging
+sessions of an electric vehicle from a monitored outlet or current clamp, and
+records the **duration**, **energy (kWh)** and **cost (€)** of each session —
+with a fixed price or a price entity, including when the price changes during
+the charge (off-peak / peak hours).
 
-> 🚧 En développement — voir [FEATURE.md](FEATURE.md) pour le périmètre.
+> 🚧 Work in progress — see [FEATURE.md](FEATURE.md) for the scope.
 
 ## Installation (HACS)
 
-1. HACS → menu ⋮ → *Dépôts personnalisés* → `https://github.com/Pouzor/ev-charge-cost`, catégorie *Intégration*.
-2. Installer **EV Charge Cost**, redémarrer Home Assistant.
-3. Paramètres → Appareils et services → *Ajouter une intégration* → **EV Charge Cost**.
+1. HACS → ⋮ menu → *Custom repositories* → `https://github.com/Pouzor/ev-charge-cost`, category *Integration*.
+2. Install **EV Charge Cost**, then restart Home Assistant.
+3. Settings → Devices & services → *Add integration* → **EV Charge Cost**.
 
 ## Configuration
 
-- **Capteur de puissance** (W/kW) — obligatoire, sert à détecter la charge.
-- **Compteur d'énergie** (kWh cumulés) — optionnel, plus précis que l'intégration de la puissance.
-- **Détection** — seuil (200 W par défaut), délais de démarrage / d'arrêt, énergie minimale.
-- **Prix** — fixe (€/kWh) ou entité (€/kWh, c€/kWh, €/MWh).
+- **Power sensor** (W/kW) — required, used to detect charging.
+- **Energy meter** (cumulative kWh) — optional, more accurate than integrating the power.
+- **Detection** — threshold (200 W by default), start / stop delays, minimum energy.
+- **Price** — fixed (€/kWh) or an entity (€/kWh, c€/kWh, €/MWh).
 
-## Événements
+All settings can be changed later from the integration options.
 
-`ev_charge_cost_charge_started`, `ev_charge_cost_charge_ended` (durée, énergie,
-coût, tranches tarifaires) et `ev_charge_cost_charge_discarded`.
+## Entities
 
-## Développement
+Per charge point: a `charging` binary sensor, the energy / cost / duration of
+the session in progress and of the last session, total energy, total cost,
+session count and current price.
+
+## Events
+
+`ev_charge_cost_charge_started`, `ev_charge_cost_charge_ended` (duration,
+energy, cost, price tranches) and `ev_charge_cost_charge_discarded`. They also
+show up in the logbook.
+
+Example — notify when a charge ends:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: ev_charge_cost_charge_ended
+actions:
+  - action: notify.notify
+    data:
+      message: >
+        Charge finished: {{ trigger.event.data.energy_kwh }} kWh,
+        {{ trigger.event.data.cost }} € in
+        {{ (trigger.event.data.duration_s / 60) | round }} min.
+```
+
+## Services
+
+- `ev_charge_cost.stop_session` — ends the session in progress now.
+- `ev_charge_cost.reset_totals` — resets the totals and the session count.
+
+## Development
 
 ```bash
 uv venv -p 3.14 .venv && uv pip install -p .venv/bin/python -r requirements_test.txt
 .venv/bin/pytest -q
-./scripts/dev-ha.sh   # HA de test dans Docker sur http://localhost:8125
+./scripts/install-hooks.sh   # pre-commit hook: ruff + pytest
+./scripts/dev-ha.sh          # throwaway HA in Docker on http://localhost:8125
 ```

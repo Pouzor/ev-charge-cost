@@ -1,154 +1,156 @@
-# EV Charge Cost — Spécification fonctionnelle
+# EV Charge Cost — Functional specification
 
-Intégration Home Assistant (distribuée via HACS) qui détecte automatiquement les
-sessions de recharge d'un véhicule électrique branché sur une prise/ligne
-monitorée, et enregistre pour chaque session : **durée**, **énergie (kWh)** et
-**coût (€)**.
+Home Assistant integration (distributed through HACS) that automatically detects
+the charging sessions of an electric vehicle plugged into a monitored outlet or
+circuit, and records for each session its **duration**, **energy (kWh)** and
+**cost (€)**.
 
-## 1. Contexte / matériel de référence
+## 1. Context / reference hardware
 
-Installation de référence : pince Tuya **PJ-1203A** (« Bidirectional energy meter
-with 80A current clamp ») via Zigbee2MQTT, device `Pinces consommation`.
+Reference setup: Tuya **PJ-1203A** clamp ("Bidirectional energy meter with 80A
+current clamp") through Zigbee2MQTT, device `Pinces consommation`.
 
-| Rôle | Entité | Unité | Notes |
+| Role | Entity | Unit | Notes |
 |---|---|---|---|
-| Puissance voiture | `sensor.pinces_consommation_power_b` | W | `measurement`, rafraîchi toutes les 10 s |
-| Énergie voiture (compteur) | `sensor.pinces_consommation_energy_b` | kWh | `total_increasing` |
+| Car power | `sensor.pinces_consommation_power_b` | W | `measurement`, refreshed every 10 s |
+| Car energy (meter) | `sensor.pinces_consommation_energy_b` | kWh | `total_increasing` |
 
-Profil observé : charge ~3,7 kW (16 A mono), puissance à 0 W hors charge.
+Observed profile: ~3.7 kW while charging (16 A single phase), 0 W otherwise.
 
-L'intégration doit rester **générique** : tout capteur de puissance (W/kW) et,
-en option, tout capteur d'énergie cumulée (Wh/kWh) doit fonctionner (prise
-Shelly, Tuya, Zigbee, etc.).
+The integration must stay **generic**: any power sensor (W/kW) and, optionally,
+any cumulative energy sensor (Wh/kWh) must work (Shelly, Tuya, Zigbee plugs,
+etc.).
 
-## 2. Configuration (Config Flow UI, pas de YAML)
+## 2. Configuration (UI config flow, no YAML)
 
-Une entrée de configuration = un point de charge. Plusieurs instances possibles.
+One config entry = one charge point. Multiple instances are supported.
 
-### Étape 1 — Source
-| Champ | Type | Obligatoire | Défaut |
+### Step 1 — Sources
+| Field | Type | Required | Default |
 |---|---|---|---|
-| Nom | texte | oui | `Recharge VE` |
-| Capteur de puissance | entity selector (`sensor`, device_class `power`) | oui | — |
-| Capteur d'énergie cumulée | entity selector (`sensor`, device_class `energy`) | non | — |
+| Name | text | yes | `Recharge VE` |
+| Power sensor | entity selector (`sensor`, device_class `power`) | yes | — |
+| Cumulative energy sensor | entity selector (`sensor`, device_class `energy`) | no | — |
 
-### Étape 2 — Détection
-| Champ | Type | Défaut |
+The power sensor is the entry's unique ID: the same sensor cannot be tracked
+twice.
+
+### Step 2 — Detection
+| Field | Type | Default |
 |---|---|---|
-| Seuil de démarrage (W) | nombre | 200 |
-| Délai avant démarrage (s) — puissance > seuil pendant | nombre | 30 |
-| Délai avant arrêt (s) — puissance < seuil pendant | nombre | 120 |
-| Énergie minimale pour conserver une session (kWh) | nombre | 0.1 |
+| Start threshold (W) | number | 200 |
+| Start delay (s) — power above threshold for | number | 30 |
+| Stop delay (s) — power below threshold for | number | 120 |
+| Minimum energy to keep a session (kWh) | number | 0.1 |
 
-Les délais évitent les faux départs (pic bref) et les fausses fins (pauses de la
-voiture en fin de charge / équilibrage batterie).
+The delays prevent false starts (brief spikes) and false stops (the car pausing
+near the end of the charge / battery balancing).
 
-### Étape 3 — Tarif
-Mode au choix :
-- **Fixe** : prix en €/kWh (nombre, ex. `0.2516`).
-- **Entité** : entity selector vers un `sensor` / `input_number` donnant le prix
-  du kWh. Unités acceptées : `€/kWh`, `EUR/kWh`, `c€/kWh`, `€/MWh` (conversion
-  automatique) ; sans unité → interprété comme €/kWh.
+### Step 3 — Price
+Either:
+- **Fixed**: price in €/kWh (number, e.g. `0.2516`).
+- **Entity**: entity selector on a `sensor` / `input_number` / `number`
+  giving the kWh price. Accepted units: `€/kWh`, `EUR/kWh`, `c€/kWh`,
+  `ct/kWh`, `€/MWh` (converted automatically); no unit → treated as €/kWh. An
+  entity with any other unit is rejected by the flow.
 
-Toutes les options sont modifiables ensuite via l'**Options Flow** sans
-supprimer l'intégration.
+Every setting can be changed later through the **options flow** without
+removing the integration.
 
-## 3. Détection d'une session (machine à états)
-
-```
-IDLE ──(P > seuil)──▶ PENDING_START ──(P > seuil pendant délai_start)──▶ CHARGING
-  ▲                        │ (P ≤ seuil)                                   │
-  │                        ▼                                               │ (P ≤ seuil)
-  └──────────────────── IDLE                                               ▼
-  ▲                                                                  PENDING_STOP
-  │                                                                        │
-  └──(P ≤ seuil pendant délai_stop)── finalisation ◀───────────────────────┘
-                                                      (P > seuil → retour CHARGING)
-```
-
-- L'instant de début enregistré est le **premier** passage au-dessus du seuil
-  (pas la fin du délai de confirmation) ; l'énergie consommée pendant
-  `PENDING_START` est incluse.
-- L'instant de fin enregistré est le **dernier** passage sous le seuil.
-- Les délais sont évalués avec des timers (`async_call_later`), pas uniquement
-  à la réception d'un nouvel état (le capteur peut ne pas republier une valeur
-  identique).
-- États `unavailable` / `unknown` du capteur de puissance : ignorés (ni départ
-  ni arrêt). Si indisponible plus longtemps que `délai_stop`, la session reste
-  ouverte et reprend au retour du capteur.
-- Une session dont l'énergie < énergie minimale est écartée (pas d'event
-  `ended`, pas de mise à jour de « dernière session » ni des totaux), mais un
-  event `ev_charge_cost_charge_discarded` est émis.
-
-## 4. Calcul de l'énergie
-
-1. **Si un capteur d'énergie cumulée est configuré (prioritaire)** : à chaque
-   changement d'état, `delta = valeur - valeur_précédente` (converti en kWh).
-   - `delta < 0` (remise à zéro du compteur) → on prend `valeur` comme delta
-     (comportement `total_increasing`).
-   - Valeurs `unavailable`/`unknown` ignorées ; on garde la dernière valeur
-     valide comme référence.
-2. **Sinon** : intégration de la puissance par somme de Riemann **à gauche**
-   (la dernière valeur est maintenue jusqu'à la mesure suivante). HA n'émet pas
-   de changement d'état quand la valeur est identique : le tracker appelle donc
-   aussi l'intégration périodiquement (tick ~60 s) pour ne pas sous-compter une
-   puissance stable. Pendant une indisponibilité du capteur, rien n'est
-   intégré.
-
-## 5. Calcul du coût — prise en compte des changements de prix
-
-Le coût n'est **jamais** calculé comme `énergie_totale × prix_final`. Il est
-**accumulé par tranche** :
+## 3. Session detection (state machine)
 
 ```
-coût_session += delta_kWh × prix_kWh_en_vigueur_au_moment_du_delta
+IDLE ──(P > threshold)──▶ PENDING_START ──(P > threshold for start_delay)──▶ CHARGING
+  ▲                            │ (P ≤ threshold)                                │
+  │                            ▼                                                │ (P ≤ threshold)
+  └──────────────────────── IDLE                                                ▼
+  ▲                                                                       PENDING_STOP
+  │                                                                             │
+  └──(P ≤ threshold for stop_delay)── finalize ◀────────────────────────────────┘
+                                                      (P > threshold → back to CHARGING)
 ```
 
-- Le prix en vigueur est la dernière valeur valide de l'entité prix (écoutée en
-  continu via `async_track_state_change_event`).
-- Quand le prix change pendant une session, on **clôture la tranche courante**
-  (on lit/integre l'énergie jusqu'à cet instant au prix précédent) avant
-  d'appliquer le nouveau prix. Exemple : passage HC → HP à 22h00 pendant une
-  charge.
-- Si l'entité prix est indisponible : on utilise le dernier prix connu et on
-  marque la session `price_estimated: true`.
-- La session conserve la liste des tranches tarifaires
-  (`[{from, to, price, kwh, cost}]`) pour l'audit.
+- The recorded start is the **first** crossing above the threshold (not the end
+  of the confirmation delay); energy consumed during `PENDING_START` is
+  included.
+- The recorded end is the **last** crossing below the threshold.
+- Delays are evaluated with timers scheduled at the exact deadline, not only on
+  new state updates (the sensor may not republish an identical value).
+- `unavailable` / `unknown` power states are ignored (neither start nor stop).
+  If the sensor stays unavailable longer than `stop_delay`, the session stays
+  open and resumes when the sensor comes back.
+- A session below the minimum energy is discarded (no `ended` event, neither
+  the last session nor the totals are updated), but an
+  `ev_charge_cost_charge_discarded` event is fired.
 
-## 6. Entités exposées (par point de charge)
+## 4. Energy accounting
 
-| Entité | Type | Description |
+1. **When a cumulative energy sensor is configured (preferred)**: on every state
+   change, `delta = value - previous_value` (converted to kWh).
+   - `delta < 0` (meter reset) → `value` is used as the delta
+     (`total_increasing` semantics).
+   - `unavailable` / `unknown` values are ignored; the last valid value is kept
+     as the reference.
+2. **Otherwise**: the power is integrated with a **left** Riemann sum (the last
+   value is held until the next reading). Home Assistant does not fire a state
+   change when the value is unchanged, so the tracker also integrates
+   periodically (~60 s tick) to avoid under-counting a steady power. Nothing is
+   integrated while the sensor is unavailable.
+
+## 5. Cost accounting — handling price changes
+
+The cost is **never** computed as `total_energy × final_price`. It is
+**accumulated per tranche**:
+
+```
+session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
+```
+
+- The price in effect is the last valid value of the price entity (tracked
+  continuously with `async_track_state_change_event`).
+- When the price changes during a session, the **current tranche is closed**
+  (energy up to that instant is billed at the previous price) before the new
+  price applies. Example: off-peak → peak switch at 22:00 during a charge.
+- If the price entity becomes unavailable, the last known price is used and the
+  session is flagged `price_estimated: true`.
+- The session keeps its list of price tranches
+  (`[{from, to, price, kwh, cost}]`) for auditing.
+
+## 6. Entities (per charge point)
+
+| Entity | Type | Description |
 |---|---|---|
-| `binary_sensor.<nom>_charging` | binary_sensor (`battery_charging`) | `on` pendant une session (état `CHARGING`/`PENDING_STOP`) |
-| `sensor.<nom>_session_energy` | kWh, `total` | Énergie de la session en cours (0 hors session) |
-| `sensor.<nom>_session_cost` | €, `total` | Coût de la session en cours |
-| `sensor.<nom>_session_duration` | durée (min) | Durée de la session en cours |
-| `sensor.<nom>_last_session_energy` | kWh | Énergie de la dernière session terminée |
-| `sensor.<nom>_last_session_cost` | € | Coût de la dernière session terminée — attributs : start, end, durée, prix moyen, tranches |
-| `sensor.<nom>_last_session_duration` | durée (min) | Durée de la dernière session |
-| `sensor.<nom>_total_energy` | kWh, `total_increasing` | Cumul de toutes les sessions (utilisable dans le tableau Énergie) |
-| `sensor.<nom>_total_cost` | €, `total_increasing` | Cumul des coûts |
-| `sensor.<nom>_sessions` | compteur | Nombre de sessions retenues |
-| `sensor.<nom>_current_price` | €/kWh | Prix utilisé actuellement (fixe ou entité) |
+| `binary_sensor.<name>_charging` | binary_sensor (`battery_charging`) | `on` during a confirmed session (`CHARGING` / `PENDING_STOP`); `detection_state` attribute |
+| `sensor.<name>_session_energy` | kWh, `total_increasing` | Energy of the session in progress (0 outside a session) |
+| `sensor.<name>_session_cost` | € | Cost of the session in progress (no state class: a monetary `total` would record the drop to 0 as a negative cost) |
+| `sensor.<name>_session_duration` | duration (min) | Duration of the session in progress |
+| `sensor.<name>_last_session_energy` | kWh | Energy of the last completed session |
+| `sensor.<name>_last_session_cost` | € | Cost of the last completed session — attributes: start, end, duration, average price, tranches |
+| `sensor.<name>_last_session_duration` | duration (min) | Duration of the last session |
+| `sensor.<name>_total_energy` | kWh, `total_increasing` | Sum over all sessions (usable in the Energy dashboard) |
+| `sensor.<name>_total_cost` | €, `total` | Sum of costs |
+| `sensor.<name>_sessions` | counter | Number of kept sessions |
+| `sensor.<name>_current_price` | EUR/kWh (diagnostic) | Price currently applied (fixed or entity) |
 
-Toutes les entités sont rattachées à un device « EV Charge Cost – <nom> ».
+All entities belong to one service device named after the charge point.
 
-## 7. Événements (bus HA)
+## 7. Events (HA bus)
 
-Utilisables dans des automatisations (trigger `event`).
+Usable in automations (`event` trigger).
 
 ### `ev_charge_cost_charge_started`
 ```yaml
 entry_id: "…"
 name: "Recharge VE"
-start: "2026-10-30T21:43:10+01:00"
 power_entity: sensor.pinces_consommation_power_b
+start: "2026-10-30T21:43:10+01:00"
 ```
 
 ### `ev_charge_cost_charge_ended`
 ```yaml
 entry_id: "…"
 name: "Recharge VE"
+power_entity: sensor.pinces_consommation_power_b
 start: "2026-10-30T21:43:10+01:00"
 end: "2026-10-31T04:12:40+01:00"
 duration_s: 23370
@@ -163,57 +165,64 @@ tranches:
 ```
 
 ### `ev_charge_cost_charge_discarded`
-Mêmes champs que `ended`, émis quand l'énergie < minimum.
+Same fields as `ended`, fired when the energy is below the minimum.
 
-Les événements sont aussi décrits pour le **logbook** (`logbook.py`) afin
-d'apparaître dans le journal HA.
+The events are also described for the **logbook** (`logbook.py`), in English
+or French depending on the Home Assistant language, linked to the `charging`
+binary sensor.
 
-## 8. Persistance / robustesse
+## 8. Persistence / robustness
 
-- La session en cours (état machine, start, énergie, coût, tranches, dernière
-  valeur compteur, dernier prix) est sauvegardée via `homeassistant.helpers.storage.Store`
-  (`.storage/ev_charge_cost.<entry_id>`) à chaque tranche et périodiquement.
-- Au redémarrage de HA : restauration de la session ; si la puissance est
-  toujours > seuil → reprise ; sinon → passage en `PENDING_STOP` puis
-  finalisation normale. Avec capteur d'énergie, l'énergie consommée pendant
-  l'arrêt de HA est récupérée via le delta du compteur.
-- Totaux et dernière session restaurés (Store), pas seulement via
-  `RestoreEntity`.
+- The session in progress (state, start, tranches, last meter value, last
+  price) and the totals / last session are saved with
+  `homeassistant.helpers.storage.Store` (`.storage/ev_charge_cost.<entry_id>`):
+  delayed save (30 s) after each update, immediate save on unload.
+- On Home Assistant restart the session is restored; if the power is still
+  above the threshold it simply continues, otherwise it goes to `PENDING_STOP`
+  and is finalized normally. With an energy meter, the energy consumed while HA
+  was down is recovered from the meter delta.
+- Removing the integration deletes its stored data.
 
 ## 9. Services
 
 | Service | Description |
 |---|---|
-| `ev_charge_cost.stop_session` | Force la fin de la session en cours (finalisation + event `ended`) |
-| `ev_charge_cost.reset_totals` | Remet à zéro totaux et compteur de sessions |
+| `ev_charge_cost.stop_session` | Ends the session in progress now (finalization + `ended` event) |
+| `ev_charge_cost.reset_totals` | Resets the totals and the session counter |
 
-## 10. Packaging HACS
+Both take a `config_entry_id` field (charge point selector).
 
-- `hacs.json` à la racine, `custom_components/ev_charge_cost/` avec
-  `manifest.json` (`config_flow: true`, `iot_class: calculated`, `version`).
-- Traductions `fr` et `en`.
-- CI GitHub Actions : `hassfest` + `hacs/action` (validation) + tests pytest.
-- README avec installation HACS (dépôt personnalisé), captures, exemple
-  d'automatisation (notification en fin de charge avec le coût).
+## 10. HACS packaging
 
-## 11. Hors périmètre (v1)
+- `hacs.json` at the root, `custom_components/ev_charge_cost/` with
+  `manifest.json` (`config_flow: true`, `iot_class: calculated`, `version`)
+  and `brand/icon.png`.
+- `en` and `fr` translations.
+- GitHub Actions CI: `hassfest` + `hacs/action` (validation), ruff + pytest,
+  release on `vX.Y.Z` tags (tag must match the manifest version).
+- README with HACS installation (custom repository), screenshots, and an
+  automation example (notification with the cost when a charge ends).
 
-- Historique détaillé de toutes les sessions consultable dans l'UI (au-delà de
-  la dernière session et des events/logbook) — envisageable en v2 (fichier
-  Store ou entité `calendar`/`todo`).
-- Pilotage de la charge (on/off de la prise, charge en heures creuses).
-- Identification de plusieurs véhicules sur la même prise.
+## 11. Out of scope (v1)
 
-## 12. Critères d'acceptation
+- Full history of every session browsable in the UI (beyond the last session
+  and the events / logbook) — possible in v2 (Store file or `calendar` /
+  `todo` entity).
+- Controlling the charge (switching the outlet, off-peak charging).
+- Telling apart several vehicles on the same outlet.
 
-- [ ] Une charge réelle de ~3,7 kW sur `power_b` crée une session, la clôture
-      après le délai d'arrêt et émet `charge_started` / `charge_ended`.
-- [ ] Un pic < délai de démarrage ne crée pas de session.
-- [ ] Une pause < délai d'arrêt ne coupe pas la session.
-- [ ] Avec compteur d'énergie, `energy_kwh` de la session = écart du compteur
-      entre début et fin (± 0,01 kWh).
-- [ ] Un changement de prix en cours de session produit 2 tranches et le coût
-      = somme des tranches.
-- [ ] Un redémarrage de HA en pleine charge ne perd ni la session ni l'énergie.
-- [ ] Mode prix fixe et mode prix entité fonctionnent, modifiables via Options.
-- [ ] Validation `hassfest` et HACS OK ; tests unitaires verts.
+## 12. Acceptance criteria
+
+- [ ] A real ~3.7 kW charge on `power_b` creates a session, closes it after the
+      stop delay and fires `charge_started` / `charge_ended`.
+- [ ] A spike shorter than the start delay does not create a session.
+- [ ] A pause shorter than the stop delay does not end the session.
+- [ ] With an energy meter, the session `energy_kwh` equals the meter
+      difference between start and end (± 0.01 kWh).
+- [ ] A price change during a session produces 2 tranches and the cost equals
+      the sum of the tranches.
+- [ ] A Home Assistant restart in the middle of a charge loses neither the
+      session nor the energy.
+- [ ] Fixed and entity price modes both work and can be changed through
+      options.
+- [ ] `hassfest` and HACS validation pass; tests are green.
