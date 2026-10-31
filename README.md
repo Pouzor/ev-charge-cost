@@ -36,7 +36,8 @@ All settings can be changed later from the integration options.
 
 Per charge point: a `charging` binary sensor, the energy / cost / duration of
 the session in progress and of the last session, total energy, total cost,
-session count and current price.
+session count and current price — plus a **charge history calendar** with one
+event per session (energy, cost, duration and price tranches).
 
 ## Events
 

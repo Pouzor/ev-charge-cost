@@ -48,12 +48,20 @@ from .const import (
     EVENT_CHARGE_STARTED,
     PRICE_MODE_ENTITY,
 )
-from .session import DetectionConfig, Outcome, SessionEvent, SessionMachine
+from .session import (
+    ChargeSession,
+    DetectionConfig,
+    Outcome,
+    SessionEvent,
+    SessionMachine,
+)
 from .units import parse_float, price_per_kwh
 
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
+# Completed sessions kept for the history calendar (oldest dropped first).
+MAX_HISTORY = 5000
 SAVE_DELAY_S = 30
 # HA does not fire a state change for an unchanged value: integrate anyway.
 TICK_INTERVAL = timedelta(seconds=60)
@@ -67,6 +75,10 @@ _EVENTS = {
 
 def storage_key(entry_id: str) -> str:
     return f"{DOMAIN}.{entry_id}"
+
+
+def history_storage_key(entry_id: str) -> str:
+    return f"{DOMAIN}.{entry_id}.history"
 
 
 def _convert(
@@ -127,6 +139,11 @@ class ChargeTracker:
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, storage_key(entry.entry_id)
         )
+        # Kept apart from the machine snapshot, which is saved far more often.
+        self.history: list[ChargeSession] = []
+        self._history_store: Store[dict[str, Any]] = Store(
+            hass, STORAGE_VERSION, history_storage_key(entry.entry_id)
+        )
         self._unsubs: list[CALLBACK_TYPE] = []
         self._cancel_deadline: CALLBACK_TYPE | None = None
 
@@ -134,6 +151,8 @@ class ChargeTracker:
         """Restore the persisted state, then start listening."""
         if data := await self._store.async_load():
             self.machine.restore(data)
+        if history := await self._history_store.async_load():
+            self.history = [ChargeSession.from_dict(s) for s in history["sessions"]]
         now = dt_util.utcnow()
         # Meter first so energy consumed while HA was down lands in the
         # restored session, then the price, then power drives transitions.
@@ -165,6 +184,7 @@ class ChargeTracker:
             self._cancel_deadline()
             self._cancel_deadline = None
         await self._store.async_save(self.machine.as_dict())
+        await self._history_store.async_save(self._history_snapshot())
 
     @callback
     def async_force_stop(self) -> None:
@@ -174,6 +194,9 @@ class ChargeTracker:
     def async_reset_totals(self) -> None:
         self.machine.reset_totals(dt_util.utcnow())
         self._publish([])
+
+    def _history_snapshot(self) -> dict[str, Any]:
+        return {"sessions": [s.as_dict() for s in self.history]}
 
     def _state(self, entity_id: str | None) -> State | None:
         return self.hass.states.get(entity_id) if entity_id else None
@@ -229,6 +252,9 @@ class ChargeTracker:
                 payload["start"] = session.start.isoformat()
             else:
                 payload.update(session.summary(), currency=self.currency)
+            if event is SessionEvent.ENDED:
+                self.history = [*self.history, session][-MAX_HISTORY:]
+                self._history_store.async_delay_save(self._history_snapshot, 1)
             _LOGGER.debug("%s: %s", _EVENTS[event], payload)
             self.hass.bus.async_fire(_EVENTS[event], payload)
 

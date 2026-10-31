@@ -73,7 +73,7 @@ async def test_entities_follow_a_session(
     assert device.identifiers == {(DOMAIN, entry.entry_id)}
     assert device.name == "Voiture"
     entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    assert len(entities) == 11
+    assert len(entities) == 12
     assert all(e.device_id == device.id for e in entities)
 
 

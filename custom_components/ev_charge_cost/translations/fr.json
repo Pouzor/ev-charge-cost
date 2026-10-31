@@ -156,6 +156,11 @@
       "current_price": {
         "name": "Prix actuel"
       }
+    },
+    "calendar": {
+      "history": {
+        "name": "Historique des recharges"
+      }
     }
   },
   "services": {

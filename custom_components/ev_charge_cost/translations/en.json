@@ -156,6 +156,11 @@
       "current_price": {
         "name": "Current price"
       }
+    },
+    "calendar": {
+      "history": {
+        "name": "Charge history"
+      }
     }
   },
   "services": {

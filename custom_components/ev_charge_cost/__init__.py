@@ -11,9 +11,18 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .services import async_setup_services
-from .tracker import STORAGE_VERSION, ChargeTracker, storage_key
+from .tracker import (
+    STORAGE_VERSION,
+    ChargeTracker,
+    history_storage_key,
+    storage_key,
+)
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.CALENDAR,
+    Platform.SENSOR,
+]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type EvChargeCostConfigEntry = ConfigEntry[ChargeTracker]
@@ -47,8 +56,9 @@ async def async_unload_entry(
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Drop the persisted sessions and totals."""
-    await Store(hass, STORAGE_VERSION, storage_key(entry.entry_id)).async_remove()
+    """Drop the persisted sessions, history and totals."""
+    for key in (storage_key(entry.entry_id), history_storage_key(entry.entry_id)):
+        await Store(hass, STORAGE_VERSION, key).async_remove()
 
 
 async def _async_update_listener(

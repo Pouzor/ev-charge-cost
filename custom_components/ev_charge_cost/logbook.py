@@ -19,7 +19,7 @@ from .const import (
     EVENT_CHARGE_ENDED,
     EVENT_CHARGE_STARTED,
 )
-from .units import currency_symbol
+from .units import currency_symbol, format_duration
 
 # Logbook messages are not translatable through strings.json. The frontend
 # prints them after the name of the linked `charging` entity, hence the dash.
@@ -41,11 +41,6 @@ _MESSAGES = {
 }
 
 
-def _duration(seconds: int) -> str:
-    hours, minutes = divmod(round(seconds / 60), 60)
-    return f"{hours}h{minutes:02d}" if hours else f"{minutes} min"
-
-
 @callback
 def async_describe_events(
     hass: HomeAssistant,
@@ -59,7 +54,7 @@ def async_describe_events(
         message = messages[event.event_type].format(
             energy=data.get("energy_kwh"),
             cost=f"{data.get('cost', 0):.2f}",
-            duration=_duration(data.get("duration_s", 0)),
+            duration=format_duration(data.get("duration_s", 0)),
             currency=currency_symbol(data.get("currency", hass.config.currency)),
         )
         entry: dict[str, Any] = {

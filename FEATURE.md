@@ -135,6 +135,7 @@ session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
 | `sensor.<name>_total_energy` | kWh, `total_increasing` | Sum over all sessions (usable in the Energy dashboard) |
 | `sensor.<name>_total_cost` | €, `total` | Sum of costs; `last_reset` is set by `reset_totals` so statistics do not record a negative cost |
 | `sensor.<name>_sessions` | counter | Number of kept sessions |
+| `calendar.<name>_charge_history` | calendar | One event per completed session (summary `⚡ kWh · cost`, description with duration, average price and tranches); `on` with the session in progress while charging |
 | `sensor.<name>_current_price` | <currency>/kWh (diagnostic) | Price currently applied (fixed or entity) |
 
 All entities belong to one service device named after the charge point.
@@ -186,6 +187,9 @@ binary sensor.
   above the threshold it simply continues, otherwise it goes to `PENDING_STOP`
   and is finalized normally. With an energy meter, the energy consumed while HA
   was down is recovered from the meter delta.
+- Completed sessions are kept for the history calendar in a separate store
+  (`.storage/ev_charge_cost.<entry_id>.history`, last 5000 sessions), saved
+  when a session ends.
 - Removing the integration deletes its stored data.
 
 ## 9. Services
@@ -210,9 +214,6 @@ Both take a `config_entry_id` field (charge point selector).
 
 ## 11. Out of scope (v1)
 
-- Full history of every session browsable in the UI (beyond the last session
-  and the events / logbook) — possible in v2 (Store file or `calendar` /
-  `todo` entity).
 - Controlling the charge (switching the outlet, off-peak charging).
 - Telling apart several vehicles on the same outlet.
 

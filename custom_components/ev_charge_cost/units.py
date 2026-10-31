@@ -32,6 +32,12 @@ def parse_float(state: str | None) -> float | None:
     return value if math.isfinite(value) else None
 
 
+def format_duration(seconds: float) -> str:
+    """Human duration such as "6h30" or "5 min"."""
+    hours, minutes = divmod(round(seconds / 60), 60)
+    return f"{hours}h{minutes:02d}" if hours else f"{minutes} min"
+
+
 def currency_symbol(currency: str) -> str:
     """Symbol of an ISO 4217 currency, or the code itself."""
     return _SYMBOLS.get(currency, currency)
