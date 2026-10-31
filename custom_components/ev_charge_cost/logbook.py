@@ -20,19 +20,20 @@ from .const import (
     EVENT_CHARGE_STARTED,
 )
 
-# Logbook messages are not translatable through strings.json.
+# Logbook messages are not translatable through strings.json. The frontend
+# prints them after the name of the linked `charging` entity, hence the dash.
 _MESSAGES = {
     "en": {
-        EVENT_CHARGE_STARTED: "started charging",
-        EVENT_CHARGE_ENDED: "finished charging: {energy} kWh, {cost} € in {duration}",
-        EVENT_CHARGE_DISCARDED: "discarded a short charge ({energy} kWh)",
+        EVENT_CHARGE_STARTED: "— session started",
+        EVENT_CHARGE_ENDED: "— session ended: {energy} kWh, {cost} € in {duration}",
+        EVENT_CHARGE_DISCARDED: "— short session discarded ({energy} kWh)",
     },
     "fr": {
-        EVENT_CHARGE_STARTED: "a démarré une recharge",
+        EVENT_CHARGE_STARTED: "— session démarrée",
         EVENT_CHARGE_ENDED: (
-            "a terminé une recharge : {energy} kWh, {cost} € en {duration}"
+            "— session terminée : {energy} kWh, {cost} € en {duration}"
         ),
-        EVENT_CHARGE_DISCARDED: "a ignoré une recharge trop courte ({energy} kWh)",
+        EVENT_CHARGE_DISCARDED: "— session trop courte ignorée ({energy} kWh)",
     },
 }
 

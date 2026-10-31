@@ -72,11 +72,11 @@ async def test_service_rejects_unknown_or_unloaded_entry(
 @pytest.mark.parametrize(
     ("language", "started", "ended"),
     [
-        ("en", "started charging", "finished charging: 22.84 kWh, 4.19 € in 6h30"),
+        ("en", "— session started", "— session ended: 22.84 kWh, 4.19 € in 6h30"),
         (
             "fr",
-            "a démarré une recharge",
-            "a terminé une recharge : 22.84 kWh, 4.19 € en 6h30",
+            "— session démarrée",
+            "— session terminée : 22.84 kWh, 4.19 € en 6h30",
         ),
     ],
 )
