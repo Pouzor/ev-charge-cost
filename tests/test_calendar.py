@@ -59,7 +59,7 @@ async def test_calendar_lists_sessions(
     assert dt_util.parse_datetime(event["end"]) - start == timedelta(minutes=30)
     assert "Duration: 30 min" in event["description"]
     assert "Average price: 0.2500 €/kWh" in event["description"]
-    assert "2.000 kWh x 0.2500 €/kWh = 0.50 €" in event["description"]
+    assert "2.000 kWh @ 0.2500 = 0.50 €" in event["description"]
 
     # Outside the requested range: nothing.
     assert (

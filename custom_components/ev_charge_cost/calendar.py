@@ -72,10 +72,10 @@ class ChargeHistoryCalendar(EvChargeCostEntity, CalendarEntity):
         for tranche in session.tranches:
             to = dt_util.as_local(tranche.end or now).strftime("%H:%M")
             price = "?" if tranche.price is None else f"{tranche.price:.4f}"
+            # Short enough to fit on one line of the event dialog.
             lines.append(
-                f"{dt_util.as_local(tranche.start).strftime('%H:%M')}-{to}: "
-                f"{tranche.energy_kwh:.3f} kWh x {price} {symbol}/kWh "
-                f"= {tranche.cost:.2f} {symbol}"
+                f"{dt_util.as_local(tranche.start).strftime('%H:%M')}-{to} "
+                f"{tranche.energy_kwh:.3f} kWh @ {price} = {tranche.cost:.2f} {symbol}"
             )
         return CalendarEvent(
             start=dt_util.as_local(session.start),
