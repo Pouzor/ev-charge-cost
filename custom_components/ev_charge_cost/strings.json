@@ -1,0 +1,122 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Charge point",
+        "description": "Select the sensor measuring the EV charger power. A cumulative energy meter is optional but more accurate.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Power sensor",
+          "energy_entity": "Energy meter (optional)"
+        },
+        "data_description": {
+          "power_entity": "Sensor in W or kW used to detect charging.",
+          "energy_entity": "Cumulative kWh sensor; preferred over integrating the power."
+        }
+      },
+      "detection": {
+        "title": "Detection",
+        "data": {
+          "threshold_w": "Start threshold",
+          "start_delay_s": "Start delay",
+          "stop_delay_s": "Stop delay",
+          "min_energy_kwh": "Minimum session energy"
+        },
+        "data_description": {
+          "threshold_w": "Charging when power is above this value.",
+          "start_delay_s": "Power must stay above the threshold this long to start a session.",
+          "stop_delay_s": "Power must stay below the threshold this long to end a session.",
+          "min_energy_kwh": "Shorter sessions are discarded."
+        }
+      },
+      "price": {
+        "title": "Electricity price",
+        "data": {
+          "price_mode": "Price source"
+        }
+      },
+      "price_fixed": {
+        "title": "Fixed price",
+        "data": {
+          "price_fixed": "Price"
+        },
+        "data_description": {
+          "price_fixed": "Price per kWh in euros."
+        }
+      },
+      "price_entity": {
+        "title": "Price entity",
+        "data": {
+          "price_entity": "Price entity"
+        },
+        "data_description": {
+          "price_entity": "Entity giving the kWh price (€/kWh, c€/kWh or €/MWh). Price changes during a session are taken into account."
+        }
+      }
+    },
+    "error": {
+      "unsupported_price_unit": "Unsupported unit: use €/kWh, c€/kWh or €/MWh."
+    },
+    "abort": {
+      "already_configured": "This power sensor is already tracked."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EV Charge Cost options",
+        "data": {
+          "power_entity": "Power sensor",
+          "energy_entity": "Energy meter (optional)",
+          "threshold_w": "Start threshold",
+          "start_delay_s": "Start delay",
+          "stop_delay_s": "Stop delay",
+          "min_energy_kwh": "Minimum session energy"
+        },
+        "data_description": {
+          "power_entity": "Sensor in W or kW used to detect charging.",
+          "energy_entity": "Cumulative kWh sensor; preferred over integrating the power.",
+          "threshold_w": "Charging when power is above this value.",
+          "start_delay_s": "Power must stay above the threshold this long to start a session.",
+          "stop_delay_s": "Power must stay below the threshold this long to end a session.",
+          "min_energy_kwh": "Shorter sessions are discarded."
+        }
+      },
+      "price": {
+        "title": "Electricity price",
+        "data": {
+          "price_mode": "Price source"
+        }
+      },
+      "price_fixed": {
+        "title": "Fixed price",
+        "data": {
+          "price_fixed": "Price"
+        },
+        "data_description": {
+          "price_fixed": "Price per kWh in euros."
+        }
+      },
+      "price_entity": {
+        "title": "Price entity",
+        "data": {
+          "price_entity": "Price entity"
+        },
+        "data_description": {
+          "price_entity": "Entity giving the kWh price (€/kWh, c€/kWh or €/MWh). Price changes during a session are taken into account."
+        }
+      }
+    },
+    "error": {
+      "unsupported_price_unit": "Unsupported unit: use €/kWh, c€/kWh or €/MWh."
+    }
+  },
+  "selector": {
+    "price_mode": {
+      "options": {
+        "fixed": "Fixed price",
+        "entity": "Price from an entity"
+      }
+    }
+  }
+}

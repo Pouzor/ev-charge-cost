@@ -1,0 +1,19 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: ev-charge-cost-ha-dev
+    restart: unless-stopped
+    # 8125 by default so this can run next to other HA dev containers.
+    # Bound to localhost: this throwaway instance is not meant for the LAN.
+    ports:
+      - "127.0.0.1:${HA_PORT:-8125}:8123"
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      # HA persists its database, registry and HACS install under here.
+      # Survives container restarts so onboarding is not lost.
+      - ./dev-config:/config
+      # Live-mount the integration: restart HA to reload Python changes.
+      - ./custom_components/ev_charge_cost:/config/custom_components/ev_charge_cost:ro
+      # Fake power / energy / price entities to drive the integration.
+      - ./dev/packages:/config/packages:ro

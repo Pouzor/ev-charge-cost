@@ -1,0 +1,13 @@
+{
+  "domain": "ev_charge_cost",
+  "name": "EV Charge Cost",
+  "codeowners": ["@Pouzor"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Pouzor/ev-charge-cost",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/Pouzor/ev-charge-cost/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

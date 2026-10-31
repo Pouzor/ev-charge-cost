@@ -1,0 +1,48 @@
+# Dev-only package: fakes the entities a monitored EV charger exposes (power,
+# cumulative energy) plus a variable kWh price, so the integration can be
+# exercised without real hardware. Drive the values from the input_number
+# helpers (e.g. set power to 3700 W to simulate a charge, 0 to stop it).
+
+input_number:
+  fake_ev_power:
+    name: Fake EV power
+    min: 0
+    max: 11000
+    step: 10
+    initial: 0
+    mode: box
+    unit_of_measurement: W
+  fake_ev_price:
+    name: Fake kWh price
+    min: 0
+    max: 1
+    step: 0.0001
+    initial: 0.2516
+    mode: box
+    unit_of_measurement: "€/kWh"
+
+template:
+  - sensor:
+      - name: Fake EV power
+        unique_id: fake_ev_power
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        state: "{{ states('input_number.fake_ev_power') }}"
+      - name: Fake EV price
+        unique_id: fake_ev_price
+        unit_of_measurement: "€/kWh"
+        state: "{{ states('input_number.fake_ev_price') }}"
+
+# Cumulative kWh meter built from the fake power, like the PJ-1203A energy_b.
+sensor:
+  - platform: integration
+    name: Fake EV energy
+    unique_id: fake_ev_energy
+    source: sensor.fake_ev_power
+    unit_prefix: k
+    unit_time: h
+    method: left
+    round: 3
+    max_sub_interval:
+      seconds: 10
