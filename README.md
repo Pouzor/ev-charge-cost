@@ -16,6 +16,16 @@ the charge (off-peak / peak hours).
 
 > 🚧 Work in progress — see [FEATURE.md](FEATURE.md) for the scope.
 
+## Screenshots
+
+The charge point device with its sensors and activity:
+
+![Charge point device page](https://raw.githubusercontent.com/Pouzor/ev-charge-cost/main/docs/screenshots/device.png)
+
+Each charge in the history calendar, with its price tranches:
+
+![Charge session in the history calendar](https://raw.githubusercontent.com/Pouzor/ev-charge-cost/main/docs/screenshots/calendar.png)
+
 ## Installation (HACS)
 
 1. HACS → ⋮ menu → *Custom repositories* → `https://github.com/Pouzor/ev-charge-cost`, category *Integration*.
