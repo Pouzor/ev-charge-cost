@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -46,6 +47,7 @@ def _last_attrs(machine: SessionMachine) -> dict[str, Any] | None:
 class EvChargeCostSensorDescription(SensorEntityDescription):
     value_fn: Callable[[SessionMachine], Any]
     attrs_fn: Callable[[SessionMachine], dict[str, Any] | None] = lambda _: None
+    last_reset_fn: Callable[[SessionMachine], datetime | None] = lambda _: None
 
 
 def _energy(key: str, state_class: SensorStateClass | None, value_fn):
@@ -102,7 +104,13 @@ SENSORS: tuple[EvChargeCostSensorDescription, ...] = (
         SensorStateClass.TOTAL_INCREASING,
         lambda m: m.totals.energy_kwh,
     ),
-    _cost("total_cost", SensorStateClass.TOTAL, lambda m: m.totals.cost),
+    # TOTAL needs last_reset, otherwise reset_totals is recorded as a negative cost.
+    _cost(
+        "total_cost",
+        SensorStateClass.TOTAL,
+        lambda m: m.totals.cost,
+        last_reset_fn=lambda m: m.totals.last_reset,
+    ),
     EvChargeCostSensorDescription(
         key="session_count",
         translation_key="session_count",
@@ -139,3 +147,7 @@ class EvChargeCostSensor(EvChargeCostEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return self.entity_description.attrs_fn(self.tracker.machine)
+
+    @property
+    def last_reset(self) -> datetime | None:
+        return self.entity_description.last_reset_fn(self.tracker.machine)

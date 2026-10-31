@@ -172,6 +172,8 @@ class Totals:
     energy_kwh: float = 0.0
     cost: float = 0.0
     count: int = 0
+    # When the totals were last reset, for the `last_reset` of TOTAL sensors.
+    last_reset: datetime | None = None
 
 
 Outcome = tuple[SessionEvent, ChargeSession]
@@ -296,8 +298,8 @@ class SessionMachine:
             return self._finalize(self._below_since or now)
         return []
 
-    def reset_totals(self) -> None:
-        self.totals = Totals()
+    def reset_totals(self, now: datetime) -> None:
+        self.totals = Totals(last_reset=now)
 
     def _add_energy(self, kwh: float) -> None:
         if self.session is None or kwh <= 0:
@@ -339,6 +341,11 @@ class SessionMachine:
                 "energy_kwh": self.totals.energy_kwh,
                 "cost": self.totals.cost,
                 "count": self.totals.count,
+                "last_reset": (
+                    self.totals.last_reset.isoformat()
+                    if self.totals.last_reset
+                    else None
+                ),
             },
             "price": self._price,
             "meter_kwh": self._meter_kwh,
@@ -360,7 +367,14 @@ class SessionMachine:
             if data["last_session"]
             else None
         )
-        self.totals = Totals(**data["totals"])
+        totals = data["totals"]
+        last_reset = totals.get("last_reset")
+        self.totals = Totals(
+            energy_kwh=totals["energy_kwh"],
+            cost=totals["cost"],
+            count=totals["count"],
+            last_reset=datetime.fromisoformat(last_reset) if last_reset else None,
+        )
         self._price = data["price"]
         self._meter_kwh = data["meter_kwh"]
         self._below_since = (

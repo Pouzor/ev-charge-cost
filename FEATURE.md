@@ -128,7 +128,7 @@ session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
 | `sensor.<name>_last_session_cost` | € | Cost of the last completed session — attributes: start, end, duration, average price, tranches |
 | `sensor.<name>_last_session_duration` | duration (min) | Duration of the last session |
 | `sensor.<name>_total_energy` | kWh, `total_increasing` | Sum over all sessions (usable in the Energy dashboard) |
-| `sensor.<name>_total_cost` | €, `total` | Sum of costs |
+| `sensor.<name>_total_cost` | €, `total` | Sum of costs; `last_reset` is set by `reset_totals` so statistics do not record a negative cost |
 | `sensor.<name>_sessions` | counter | Number of kept sessions |
 | `sensor.<name>_current_price` | EUR/kWh (diagnostic) | Price currently applied (fixed or entity) |
 

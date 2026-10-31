@@ -168,7 +168,7 @@ class ChargeTracker:
 
     @callback
     def async_reset_totals(self) -> None:
-        self.machine.reset_totals()
+        self.machine.reset_totals(dt_util.utcnow())
         self._publish([])
 
     def _state(self, entity_id: str | None) -> State | None:

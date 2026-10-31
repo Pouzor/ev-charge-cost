@@ -258,3 +258,30 @@ def test_summary_payload():
     assert summary["cost"] == 0.93
     assert summary["avg_price"] == 0.25
     assert summary["tranches"][0]["to"] == at(3600).isoformat()
+
+
+def test_reset_totals_records_reset_time_and_survives_snapshot():
+    machine = meter_machine()
+    machine.update_power(at(0), 3700)
+    machine.check(at(30))
+    machine.update_energy(at(600), 101)
+    machine.force_stop(at(600))
+    assert machine.totals.last_reset is None
+
+    machine.reset_totals(at(700))
+    assert machine.totals.count == 0
+    assert machine.totals.last_reset == at(700)
+
+    restored = SessionMachine(CONFIG, use_energy_meter=True)
+    restored.restore(machine.as_dict())
+    assert restored.totals.last_reset == at(700)
+
+
+def test_restore_snapshot_without_last_reset():
+    """Snapshots written by v0.1.0 have no last_reset key."""
+    machine = meter_machine()
+    data = machine.as_dict()
+    del data["totals"]["last_reset"]
+    restored = SessionMachine(CONFIG, use_energy_meter=True)
+    restored.restore(data)
+    assert restored.totals.last_reset is None

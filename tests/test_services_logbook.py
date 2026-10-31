@@ -4,6 +4,7 @@ import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_charge_cost.const import (
@@ -41,12 +42,23 @@ async def test_reset_totals_service(
         DOMAIN, "stop_session", {"config_entry_id": entry.entry_id}, blocking=True
     )
     assert hass.states.get("sensor.voiture_sessions").state == "1"
+    assert "last_reset" not in hass.states.get("sensor.voiture_total_cost").attributes
 
     await hass.services.async_call(
         DOMAIN, "reset_totals", {"config_entry_id": entry.entry_id}, blocking=True
     )
+    total_cost = hass.states.get("sensor.voiture_total_cost")
     assert hass.states.get("sensor.voiture_sessions").state == "0"
-    assert hass.states.get("sensor.voiture_total_cost").state == "0.0"
+    assert total_cost.state == "0.0"
+    # Without last_reset the statistics would record the drop as a negative cost.
+    assert total_cost.attributes["last_reset"] == dt_util.utcnow().isoformat()
+
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert (
+        hass.states.get("sensor.voiture_total_cost").attributes["last_reset"]
+        == total_cost.attributes["last_reset"]
+    )
 
 
 async def test_service_rejects_unknown_or_unloaded_entry(
