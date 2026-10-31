@@ -1,4 +1,12 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Pouzor/ev-charge-cost/main/custom_components/ev_charge_cost/brand/icon.png" alt="EV Charge Cost" width="128">
+</p>
+
 # EV Charge Cost
+
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![Release](https://img.shields.io/github/v/release/Pouzor/ev-charge-cost)](https://github.com/Pouzor/ev-charge-cost/releases)
+[![Validate](https://github.com/Pouzor/ev-charge-cost/actions/workflows/validate.yml/badge.svg)](https://github.com/Pouzor/ev-charge-cost/actions/workflows/validate.yml)
 
 Home Assistant integration (HACS) that automatically detects the charging
 sessions of an electric vehicle from a monitored outlet or current clamp, and
