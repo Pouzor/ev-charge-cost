@@ -201,6 +201,13 @@ binary sensor.
 
 Both take a `config_entry_id` field (charge point selector).
 
+### Blueprint
+
+`blueprints/charge_ended_notification.yaml` (automation) notifies a mobile
+device with the energy, cost and duration when a session ends. It is copied
+to `<config>/blueprints/automation/ev_charge_cost/` at startup when missing;
+an existing file is never overwritten.
+
 ## 10. HACS packaging
 
 - `hacs.json` at the root, `custom_components/ev_charge_cost/` with

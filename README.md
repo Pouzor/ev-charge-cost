@@ -60,6 +60,18 @@ actions:
         {{ (trigger.event.data.duration_s / 60) | round }} min.
 ```
 
+## Blueprint
+
+A blueprint **"EV Charge Cost — notify when a charge ends"** ships with the
+integration and is installed automatically in
+`blueprints/automation/ev_charge_cost/` (an existing file is never
+overwritten). Create an automation from it in Settings → Automations →
+Blueprints, pick the charge point and a phone running the Companion app.
+
+It can also be imported directly:
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FPouzor%2Fev-charge-cost%2Fblob%2Fmain%2Fcustom_components%2Fev_charge_cost%2Fblueprints%2Fcharge_ended_notification.yaml)
+
 ## Services
 
 - `ev_charge_cost.stop_session` — ends the session in progress now.

@@ -17,6 +17,16 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     return
 
 
+@pytest.fixture(autouse=True)
+def isolated_blueprints(hass: HomeAssistant, tmp_path, monkeypatch) -> None:
+    """Install blueprints in a temporary folder, not the shared testing config."""
+    monkeypatch.setattr(
+        hass.config,
+        "path",
+        lambda *parts: str(tmp_path.joinpath(*parts)),
+    )
+
+
 @pytest.fixture
 def events(hass: HomeAssistant) -> dict[str, list]:
     """Captured charge events, keyed by event type."""

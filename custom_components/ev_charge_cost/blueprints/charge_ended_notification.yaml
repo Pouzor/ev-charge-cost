@@ -1,0 +1,50 @@
+blueprint:
+  name: EV Charge Cost — notify when a charge ends
+  description: >
+    Sends a notification to a mobile device when an EV Charge Cost session
+    ends, with the energy, cost and duration of the charge.
+  domain: automation
+  source_url: https://github.com/Pouzor/ev-charge-cost/blob/main/custom_components/ev_charge_cost/blueprints/charge_ended_notification.yaml
+  input:
+    charge_point:
+      name: Charge point
+      description: The EV Charge Cost charge point to watch.
+      selector:
+        config_entry:
+          integration: ev_charge_cost
+    notify_device:
+      name: Device to notify
+      description: A device running the Home Assistant Companion app.
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    title:
+      name: Title
+      default: EV charge finished
+      selector:
+        text:
+
+mode: queued
+
+triggers:
+  - trigger: event
+    event_type: ev_charge_cost_charge_ended
+    event_data:
+      entry_id: !input charge_point
+
+actions:
+  - variables:
+      data: "{{ trigger.event.data }}"
+      minutes: "{{ (data.duration_s / 60) | round | int }}"
+      duration: >-
+        {{ '%dh%02d' | format(minutes // 60, minutes % 60) if minutes >= 60
+           else minutes ~ ' min' }}
+  - domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: !input title
+    message: >-
+      {{ data.name }}: {{ data.energy_kwh }} kWh,
+      {{ '%.2f' | format(data.cost) }} {{ data.currency }} in {{ duration }}
+      (avg {{ '%.4f' | format(data.avg_price or 0) }} {{ data.currency }}/kWh).

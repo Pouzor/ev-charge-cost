@@ -9,6 +9,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
+from .blueprint import async_install_blueprints
 from .const import DOMAIN
 from .services import async_setup_services
 from .tracker import (
@@ -29,8 +30,9 @@ type EvChargeCostConfigEntry = ConfigEntry[ChargeTracker]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the integration-wide services."""
+    """Register the integration-wide services and install the blueprints."""
     async_setup_services(hass)
+    await async_install_blueprints(hass)
     return True
 
 
