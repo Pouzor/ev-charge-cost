@@ -13,7 +13,13 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, UnitOfEnergy, UnitOfTime
+from homeassistant.const import (
+    EntityCategory,
+    UnitOfEnergy,
+    UnitOfEnergyDistance,
+    UnitOfLength,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -33,7 +39,9 @@ def _current(fn: Callable[[ChargeSession], float]) -> Callable[[SessionMachine],
     return lambda m: fn(m.session) if m.charging and m.session else 0
 
 
-def _last(fn: Callable[[ChargeSession], float]) -> Callable[[SessionMachine], Any]:
+def _last(
+    fn: Callable[[ChargeSession], float | None],
+) -> Callable[[SessionMachine], Any]:
     return lambda m: fn(m.last_session) if m.last_session else None
 
 
@@ -128,13 +136,44 @@ SENSORS: tuple[EvChargeCostSensorDescription, ...] = (
 )
 
 
+# Only created when an odometer entity is configured.
+DISTANCE_SENSORS: tuple[EvChargeCostSensorDescription, ...] = (
+    EvChargeCostSensorDescription(
+        key="last_session_distance",
+        translation_key="last_session_distance",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        suggested_display_precision=0,
+        value_fn=_last(lambda s: s.distance_km),
+    ),
+    EvChargeCostSensorDescription(
+        key="last_session_consumption",
+        translation_key="last_session_consumption",
+        device_class=SensorDeviceClass.ENERGY_DISTANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM,
+        suggested_display_precision=1,
+        value_fn=_last(lambda s: s.kwh_per_100km),
+    ),
+    EvChargeCostSensorDescription(
+        key="last_session_cost_per_100km",
+        translation_key="last_session_cost_per_100km",
+        state_class=SensorStateClass.MEASUREMENT,
+        currency_unit_fn=lambda c: f"{c}/100 {UnitOfLength.KILOMETERS}",
+        suggested_display_precision=2,
+        value_fn=_last(lambda s: s.cost_per_100km),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: EvChargeCostConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     tracker = entry.runtime_data
-    async_add_entities(EvChargeCostSensor(tracker, d) for d in SENSORS)
+    descriptions = SENSORS + (DISTANCE_SENSORS if tracker.odometer_entity else ())
+    async_add_entities(EvChargeCostSensor(tracker, d) for d in descriptions)
 
 
 class EvChargeCostSensor(EvChargeCostEntity, SensorEntity):

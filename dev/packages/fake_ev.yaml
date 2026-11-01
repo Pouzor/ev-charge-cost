@@ -1,7 +1,8 @@
 # Dev-only package: fakes the entities a monitored EV charger exposes (power,
-# cumulative energy) plus a variable kWh price, so the integration can be
+# cumulative energy) plus a variable kWh price and the car odometer, so the integration can be
 # exercised without real hardware. Drive the values from the input_number
-# helpers (e.g. set power to 3700 W to simulate a charge, 0 to stop it).
+# helpers (e.g. set power to 3700 W to simulate a charge, 0 to stop it; raise
+# the odometer between two charges to simulate driving).
 
 input_number:
   fake_ev_power:
@@ -20,6 +21,13 @@ input_number:
     initial: 0.2516
     mode: box
     unit_of_measurement: "€/kWh"
+  fake_ev_odometer:
+    name: Fake EV odometer
+    min: 0
+    max: 1000000
+    step: 1
+    mode: box
+    unit_of_measurement: km
 
 template:
   - sensor:
@@ -33,6 +41,12 @@ template:
         unique_id: fake_ev_price
         unit_of_measurement: "€/kWh"
         state: "{{ states('input_number.fake_ev_price') }}"
+      - name: Fake EV odometer
+        unique_id: fake_ev_odometer
+        unit_of_measurement: km
+        device_class: distance
+        state_class: total_increasing
+        state: "{{ states('input_number.fake_ev_odometer') }}"
 
 # Cumulative kWh meter built from the fake power, like the PJ-1203A energy_b.
 sensor:

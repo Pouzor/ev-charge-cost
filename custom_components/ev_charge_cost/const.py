@@ -7,6 +7,7 @@ DOMAIN: Final = "ev_charge_cost"
 # Config / options keys
 CONF_POWER_ENTITY: Final = "power_entity"
 CONF_ENERGY_ENTITY: Final = "energy_entity"
+CONF_ODOMETER_ENTITY: Final = "odometer_entity"
 CONF_THRESHOLD_W: Final = "threshold_w"
 CONF_START_DELAY_S: Final = "start_delay_s"
 CONF_STOP_DELAY_S: Final = "stop_delay_s"

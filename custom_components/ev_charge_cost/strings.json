@@ -7,11 +7,13 @@
         "data": {
           "name": "Name",
           "power_entity": "Power sensor",
-          "energy_entity": "Energy meter (optional)"
+          "energy_entity": "Energy meter (optional)",
+          "odometer_entity": "Odometer (optional)"
         },
         "data_description": {
           "power_entity": "Sensor in W or kW used to detect charging.",
-          "energy_entity": "Cumulative kWh sensor; preferred over integrating the power."
+          "energy_entity": "Cumulative kWh sensor; preferred over integrating the power.",
+          "odometer_entity": "Car mileage sensor; gives the distance driven between charges and the consumption per 100 km."
         }
       },
       "detection": {
@@ -68,6 +70,7 @@
         "data": {
           "power_entity": "Power sensor",
           "energy_entity": "Energy meter (optional)",
+          "odometer_entity": "Odometer (optional)",
           "threshold_w": "Start threshold",
           "start_delay_s": "Start delay",
           "stop_delay_s": "Stop delay",
@@ -76,6 +79,7 @@
         "data_description": {
           "power_entity": "Sensor in W or kW used to detect charging.",
           "energy_entity": "Cumulative kWh sensor; preferred over integrating the power.",
+          "odometer_entity": "Car mileage sensor; gives the distance driven between charges and the consumption per 100 km.",
           "threshold_w": "Charging when power is above this value.",
           "start_delay_s": "Power must stay above the threshold this long to start a session.",
           "stop_delay_s": "Power must stay below the threshold this long to end a session.",
@@ -143,6 +147,15 @@
       },
       "last_session_duration": {
         "name": "Last session duration"
+      },
+      "last_session_distance": {
+        "name": "Last session distance"
+      },
+      "last_session_consumption": {
+        "name": "Last session consumption"
+      },
+      "last_session_cost_per_100km": {
+        "name": "Last session cost per 100 km"
       },
       "total_energy": {
         "name": "Total energy"

@@ -36,6 +36,8 @@ Each charge in the history calendar, with its price tranches:
 
 - **Power sensor** (W/kW) — required, used to detect charging.
 - **Energy meter** (cumulative kWh) — optional, more accurate than integrating the power.
+- **Odometer** (car mileage) — optional: each charge gets the km driven since
+  the previous one, its consumption (kWh/100 km) and its cost per 100 km.
 - **Detection** — threshold (200 W by default), start / stop delays, minimum energy.
 - **Price** — fixed or an entity (e.g. €/kWh, c€/kWh, €/MWh). Prices and
   costs use the currency configured in Home Assistant.
@@ -46,13 +48,16 @@ All settings can be changed later from the integration options.
 
 Per charge point: a `charging` binary sensor, the energy / cost / duration of
 the session in progress and of the last session, total energy, total cost,
-session count and current price — plus a **charge history calendar** with one
-event per session (energy, cost, duration and price tranches).
+session count and current price; with an odometer, the distance, kWh/100 km
+and cost per 100 km of the last session — plus a **charge history calendar**
+with one event per session (energy, cost, duration, distance and consumption,
+price tranches).
 
 ## Events
 
 `ev_charge_cost_charge_started`, `ev_charge_cost_charge_ended` (duration,
-energy, cost, price tranches) and `ev_charge_cost_charge_discarded`. They also
+energy, cost, price tranches; distance, kWh/100 km and cost per 100 km with an
+odometer) and `ev_charge_cost_charge_discarded`. They also
 show up in the logbook.
 
 Example — notify when a charge ends:

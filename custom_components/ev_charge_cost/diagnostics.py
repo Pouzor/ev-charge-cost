@@ -22,6 +22,7 @@ async def async_get_config_entry_diagnostics(
         ("power", tracker.power_entity),
         ("energy", tracker.energy_entity),
         ("price", tracker.price_entity),
+        ("odometer", tracker.odometer_entity),
     ):
         if entity_id is None:
             continue

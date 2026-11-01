@@ -28,6 +28,12 @@
       },
       "current_price": {
         "default": "mdi:cash-clock"
+      },
+      "last_session_consumption": {
+        "default": "mdi:car-electric-outline"
+      },
+      "last_session_cost_per_100km": {
+        "default": "mdi:cash-fast"
       }
     }
   },
