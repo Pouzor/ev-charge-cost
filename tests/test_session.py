@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from custom_components.ev_charge_cost.session import (
+    ChargeSession,
     DetectionConfig,
     SessionEvent,
     SessionMachine,
@@ -285,3 +286,117 @@ def test_restore_snapshot_without_last_reset():
     restored = SessionMachine(CONFIG, use_energy_meter=True)
     restored.restore(data)
     assert restored.totals.last_reset is None
+
+
+def _charge(machine: SessionMachine, t: float, kwh: float, odometer=None):
+    """Run a full session from ``t`` consuming ``kwh``; return its outcome."""
+    if odometer is not None:
+        machine.update_odometer(at(t), odometer)
+    machine.update_power(at(t), 3700)
+    machine.check(at(t + 30))
+    machine.update_energy(at(t + 3600), machine._meter_kwh + kwh)
+    machine.update_power(at(t + 3600), 0)
+    return machine.check(at(t + 3720))
+
+
+def test_distance_and_consumption_since_previous_charge():
+    machine = meter_machine()
+    ((_, first),) = _charge(machine, 0, 10, odometer=800)
+    assert first.odometer_km == 800
+    assert first.distance_km is None
+    assert first.kwh_per_100km is None
+    assert "distance_km" in first.summary()
+
+    ((_, second),) = _charge(machine, 86400, 22.5, odometer=950)
+    assert second.distance_km == 150
+    assert second.kwh_per_100km == pytest.approx(15)
+    assert second.cost_per_100km == pytest.approx(22.5 * 0.25 / 150 * 100)
+    summary = second.summary()
+    assert summary["distance_km"] == 150
+    assert summary["kwh_per_100km"] == 15
+    assert summary["cost_per_100km"] == 3.75
+
+
+def test_no_odometer_keeps_summary_unchanged():
+    machine = meter_machine()
+    ((_, session),) = _charge(machine, 0, 10)
+    assert session.odometer_km is None
+    assert "distance_km" not in session.summary()
+
+
+def test_odometer_refreshed_while_charging_replaces_stale_reading():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    # Stale cloud value at plug-in, refreshed once the car wakes up.
+    machine.update_odometer(at(86000), 800)
+    machine.update_power(at(86400), 3700)
+    machine.check(at(86430))
+    assert machine.session.distance_km == 0
+    assert machine.session.kwh_per_100km is None
+    machine.update_odometer(at(86500), 950)
+    assert machine.session.distance_km == 150
+
+
+def test_odometer_ignored_during_stop_delay():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    machine.update_odometer(at(86000), 950)
+    machine.update_power(at(86400), 3700)
+    machine.check(at(86430))
+    machine.update_energy(at(90000), machine._meter_kwh + 20)
+    machine.update_power(at(90000), 0)
+    # Unplugged and driving before the stop delay elapsed.
+    machine.update_odometer(at(90060), 955)
+    ((_, session),) = machine.check(at(90120))
+    assert session.distance_km == 150
+    ((_, third),) = _charge(machine, 172800, 10, odometer=1000)
+    assert third.distance_km == 50
+
+
+def test_unknown_odometer_invalidates_the_reference():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    machine._odometer_km = None  # odometer never reported during this one
+    ((_, second),) = _charge(machine, 86400, 10)
+    assert second.distance_km is None
+    ((_, third),) = _charge(machine, 172800, 10, odometer=1100)
+    assert third.distance_km is None
+
+
+def test_discarded_session_keeps_the_reference():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    ((event, _),) = _charge(machine, 86400, 0.01, odometer=900)
+    assert event is SessionEvent.DISCARDED
+    ((_, kept),) = _charge(machine, 172800, 20, odometer=950)
+    assert kept.distance_km == 150
+
+
+def test_decreasing_odometer_gives_no_distance():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    ((_, session),) = _charge(machine, 86400, 10, odometer=10)
+    assert session.distance_km is None
+    ((_, next_one),) = _charge(machine, 172800, 10, odometer=110)
+    assert next_one.distance_km == 100
+
+
+def test_odometer_survives_restore():
+    machine = meter_machine()
+    _charge(machine, 0, 10, odometer=800)
+    machine.update_power(at(86400), 3700)
+    machine.update_odometer(at(86410), 950)
+    restored = SessionMachine(CONFIG, use_energy_meter=True, price=0.25)
+    restored.restore(machine.as_dict())
+    assert restored.session.distance_km == 150
+    assert restored.last_session.odometer_km == 800
+    restored.update_odometer(at(86420), 960)
+    assert restored.session.distance_km == 160
+
+
+def test_sessions_stored_without_odometer_still_load():
+    machine = meter_machine()
+    ((_, session),) = _charge(machine, 0, 10)
+    data = session.as_dict()
+    del data["odometer_km"], data["distance_km"]
+    assert ChargeSession.from_dict(data).distance_km is None

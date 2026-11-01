@@ -78,10 +78,36 @@ class ChargeSession:
     tranches: list[Tranche] = field(default_factory=list)
     end: datetime | None = None
     price_estimated: bool = False
+    # Odometer reading (km) during the session, and the distance driven since
+    # the previous kept session: the energy charged here replenishes it.
+    odometer_km: float | None = None
+    distance_km: float | None = None
 
     @classmethod
     def begin(cls, start: datetime, price: float | None) -> ChargeSession:
         return cls(start=start, tranches=[Tranche(start=start, price=price)])
+
+    def set_odometer(self, km: float, reference_km: float | None) -> None:
+        """Record the odometer; the distance needs a non-decreasing reference."""
+        self.odometer_km = km
+        self.distance_km = (
+            km - reference_km
+            if reference_km is not None and km >= reference_km
+            else None
+        )
+
+    def _per_100km(self, value: float) -> float | None:
+        if self.distance_km is None or self.distance_km <= 0:
+            return None
+        return value / self.distance_km * 100
+
+    @property
+    def kwh_per_100km(self) -> float | None:
+        return self._per_100km(self.energy_kwh)
+
+    @property
+    def cost_per_100km(self) -> float | None:
+        return self._per_100km(self.cost)
 
     @property
     def energy_kwh(self) -> float:
@@ -135,6 +161,7 @@ class ChargeSession:
             "cost": round(self.cost, 2),
             "avg_price": round(avg, 4) if avg is not None else None,
             "price_estimated": self.price_estimated,
+            **(self.distance_summary() if self.odometer_km is not None else {}),
             "tranches": [
                 {
                     "from": t.start.isoformat(),
@@ -147,12 +174,27 @@ class ChargeSession:
             ],
         }
 
+    def distance_summary(self) -> dict[str, Any]:
+        """Odometer, distance since the previous charge and consumption."""
+
+        def rounded(value: float | None, digits: int) -> float | None:
+            return round(value, digits) if value is not None else None
+
+        return {
+            "odometer_km": rounded(self.odometer_km, 1),
+            "distance_km": rounded(self.distance_km, 1),
+            "kwh_per_100km": rounded(self.kwh_per_100km, 2),
+            "cost_per_100km": rounded(self.cost_per_100km, 2),
+        }
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "start": self.start.isoformat(),
             "end": self.end.isoformat() if self.end else None,
             "price_estimated": self.price_estimated,
             "tranches": [t.as_dict() for t in self.tranches],
+            "odometer_km": self.odometer_km,
+            "distance_km": self.distance_km,
         }
 
     @classmethod
@@ -162,6 +204,9 @@ class ChargeSession:
             end=datetime.fromisoformat(data["end"]) if data["end"] else None,
             price_estimated=data["price_estimated"],
             tranches=[Tranche.from_dict(t) for t in data["tranches"]],
+            # Absent from sessions stored before the odometer was supported.
+            odometer_km=data.get("odometer_km"),
+            distance_km=data.get("distance_km"),
         )
 
 
@@ -207,6 +252,10 @@ class SessionMachine:
         self._power_at: datetime | None = None
         self._meter_kwh: float | None = None
         self._below_since: datetime | None = None
+        # Last valid odometer reading, and the odometer of the last kept
+        # session: the distance of the next session is measured from it.
+        self._odometer_km: float | None = None
+        self._reference_km: float | None = None
 
     @property
     def price(self) -> float | None:
@@ -228,6 +277,8 @@ class SessionMachine:
         if self.state is State.IDLE and above:
             self.state = State.PENDING_START
             self.session = ChargeSession.begin(now, self._price)
+            if self._odometer_km is not None:
+                self.session.set_odometer(self._odometer_km, self._reference_km)
         elif self.state is State.PENDING_START and not above:
             self.state = State.IDLE
             self.session = None
@@ -259,6 +310,22 @@ class SessionMachine:
         self._price_stale = False
         if self.session is not None:
             self.session.change_price(now, price)
+
+    def update_odometer(self, now: datetime, km: float | None) -> None:
+        """Feed an odometer reading (km); ``None`` is ignored.
+
+        A reading while power is drawn replaces the one taken at the start:
+        cloud car integrations often refresh the odometer only after plugging
+        in. Not during the stop delay, when the car may already be driving.
+        """
+        if km is None:
+            return
+        self._odometer_km = km
+        if self.session is not None and self.state in (
+            State.PENDING_START,
+            State.CHARGING,
+        ):
+            self.session.set_odometer(km, self._reference_km)
 
     def check(self, now: datetime) -> list[Outcome]:
         """Integrate up to ``now`` and apply elapsed start/stop delays."""
@@ -326,6 +393,9 @@ class SessionMachine:
         if session.energy_kwh < self.config.min_energy_kwh:
             return [(SessionEvent.DISCARDED, session)]
         self.last_session = session
+        # An unknown odometer invalidates the reference rather than letting the
+        # next session count the distance of two charges.
+        self._reference_km = session.odometer_km
         self.totals.energy_kwh += session.energy_kwh
         self.totals.cost += session.cost
         self.totals.count += 1
@@ -350,6 +420,8 @@ class SessionMachine:
             "price": self._price,
             "meter_kwh": self._meter_kwh,
             "below_since": self._below_since.isoformat() if self._below_since else None,
+            "odometer_km": self._odometer_km,
+            "reference_km": self._reference_km,
         }
 
     def restore(self, data: dict[str, Any]) -> None:
@@ -380,5 +452,7 @@ class SessionMachine:
         self._below_since = (
             datetime.fromisoformat(data["below_since"]) if data["below_since"] else None
         )
+        self._odometer_km = data.get("odometer_km")
+        self._reference_km = data.get("reference_km")
         if self.session is None:
             self.state = State.IDLE

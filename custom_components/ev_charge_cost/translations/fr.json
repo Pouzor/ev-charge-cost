@@ -7,11 +7,13 @@
         "data": {
           "name": "Nom",
           "power_entity": "Capteur de puissance",
-          "energy_entity": "Compteur d'énergie (optionnel)"
+          "energy_entity": "Compteur d'énergie (optionnel)",
+          "odometer_entity": "Compteur kilométrique (optionnel)"
         },
         "data_description": {
           "power_entity": "Capteur en W ou kW utilisé pour détecter la charge.",
-          "energy_entity": "Capteur kWh cumulé ; prioritaire sur l'intégration de la puissance."
+          "energy_entity": "Capteur kWh cumulé ; prioritaire sur l'intégration de la puissance.",
+          "odometer_entity": "Capteur de kilométrage de la voiture ; donne la distance parcourue entre deux charges et la consommation aux 100 km."
         }
       },
       "detection": {
@@ -68,6 +70,7 @@
         "data": {
           "power_entity": "Capteur de puissance",
           "energy_entity": "Compteur d'énergie (optionnel)",
+          "odometer_entity": "Compteur kilométrique (optionnel)",
           "threshold_w": "Seuil de démarrage",
           "start_delay_s": "Délai de démarrage",
           "stop_delay_s": "Délai d'arrêt",
@@ -76,6 +79,7 @@
         "data_description": {
           "power_entity": "Capteur en W ou kW utilisé pour détecter la charge.",
           "energy_entity": "Capteur kWh cumulé ; prioritaire sur l'intégration de la puissance.",
+          "odometer_entity": "Capteur de kilométrage de la voiture ; donne la distance parcourue entre deux charges et la consommation aux 100 km.",
           "threshold_w": "La charge est détectée au-dessus de cette puissance.",
           "start_delay_s": "Durée pendant laquelle la puissance doit rester au-dessus du seuil pour démarrer une session.",
           "stop_delay_s": "Durée pendant laquelle la puissance doit rester sous le seuil pour terminer une session.",
@@ -143,6 +147,15 @@
       },
       "last_session_duration": {
         "name": "Durée dernière session"
+      },
+      "last_session_distance": {
+        "name": "Distance de la dernière session"
+      },
+      "last_session_consumption": {
+        "name": "Consommation de la dernière session"
+      },
+      "last_session_cost_per_100km": {
+        "name": "Coût aux 100 km de la dernière session"
       },
       "total_energy": {
         "name": "Énergie totale"

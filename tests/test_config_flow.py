@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.ev_charge_cost.const import (
     CONF_ENERGY_ENTITY,
     CONF_MIN_ENERGY_KWH,
+    CONF_ODOMETER_ENTITY,
     CONF_POWER_ENTITY,
     CONF_PRICE_ENTITY,
     CONF_PRICE_FIXED,
@@ -113,6 +114,7 @@ async def test_options_flow_switches_to_fixed_and_clears_meter(
             CONF_NAME: "Voiture",
             CONF_POWER_ENTITY: POWER,
             CONF_ENERGY_ENTITY: ENERGY,
+            CONF_ODOMETER_ENTITY: "sensor.car_mileage",
             **DETECTION,
             CONF_PRICE_MODE: PRICE_MODE_ENTITY,
             CONF_PRICE_ENTITY: "sensor.tarif",
@@ -138,6 +140,7 @@ async def test_options_flow_switches_to_fixed_and_clears_meter(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     merged = {**entry.data, **entry.options}
     assert merged[CONF_ENERGY_ENTITY] is None
+    assert merged[CONF_ODOMETER_ENTITY] is None
     assert merged[CONF_THRESHOLD_W] == 500
     assert merged[CONF_PRICE_MODE] == PRICE_MODE_FIXED
     assert merged[CONF_PRICE_FIXED] == 0.2

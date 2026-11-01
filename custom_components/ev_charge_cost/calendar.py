@@ -69,6 +69,14 @@ class ChargeHistoryCalendar(EvChargeCostEntity, CalendarEntity):
             lines.append(f"Average price: {avg:.4f} {symbol}/kWh")
         if session.price_estimated:
             lines.append("Price estimated (price entity was unavailable)")
+        summary = f"⚡ {session.energy_kwh:.2f} kWh · {session.cost:.2f} {symbol}"
+        if (distance := session.distance_km) is not None:
+            summary += f" · {distance:.0f} km"
+            lines.append(f"Distance since previous charge: {distance:.0f} km")
+        if (kwh_100 := session.kwh_per_100km) is not None:
+            lines.append(f"Consumption: {kwh_100:.1f} kWh/100 km")
+        if (cost_100 := session.cost_per_100km) is not None:
+            lines.append(f"Cost: {cost_100:.2f} {symbol}/100 km")
         for tranche in session.tranches:
             to = dt_util.as_local(tranche.end or now).strftime("%H:%M")
             price = "?" if tranche.price is None else f"{tranche.price:.4f}"
@@ -80,7 +88,7 @@ class ChargeHistoryCalendar(EvChargeCostEntity, CalendarEntity):
         return CalendarEvent(
             start=dt_util.as_local(session.start),
             end=dt_util.as_local(end),
-            summary=f"⚡ {session.energy_kwh:.2f} kWh · {session.cost:.2f} {symbol}",
+            summary=summary,
             description="\n".join(lines),
             uid=f"{self.tracker.entry_id}_{session.start.isoformat()}",
         )

@@ -24,6 +24,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ENERGY_ENTITY,
     CONF_MIN_ENERGY_KWH,
+    CONF_ODOMETER_ENTITY,
     CONF_POWER_ENTITY,
     CONF_PRICE_ENTITY,
     CONF_PRICE_FIXED,
@@ -65,6 +66,9 @@ def _sources_schema() -> vol.Schema:
             ),
             vol.Optional(CONF_ENERGY_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+            ),
+            vol.Optional(CONF_ODOMETER_ENTITY): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="distance")
             ),
         }
     )
@@ -223,8 +227,9 @@ class EvChargeCostOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             self._options.update(user_input)
-            # Store the key explicitly so clearing the field overrides entry.data.
-            self._options[CONF_ENERGY_ENTITY] = user_input.get(CONF_ENERGY_ENTITY)
+            # Store the keys explicitly so clearing a field overrides entry.data.
+            for key in (CONF_ENERGY_ENTITY, CONF_ODOMETER_ENTITY):
+                self._options[key] = user_input.get(key)
             return await self.async_step_price()
 
         schema = _sources_schema().extend(DETECTION_SCHEMA.schema)

@@ -28,6 +28,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_conversion import (
     BaseUnitConverter,
+    DistanceConverter,
     EnergyConverter,
     PowerConverter,
 )
@@ -35,6 +36,7 @@ from homeassistant.util.unit_conversion import (
 from .const import (
     CONF_ENERGY_ENTITY,
     CONF_MIN_ENERGY_KWH,
+    CONF_ODOMETER_ENTITY,
     CONF_POWER_ENTITY,
     CONF_PRICE_ENTITY,
     CONF_PRICE_FIXED,
@@ -117,6 +119,7 @@ class ChargeTracker:
         self.currency: str = hass.config.currency
         self.power_entity: str = config[CONF_POWER_ENTITY]
         self.energy_entity: str | None = config.get(CONF_ENERGY_ENTITY)
+        self.odometer_entity: str | None = config.get(CONF_ODOMETER_ENTITY)
         self.price_entity: str | None = (
             config.get(CONF_PRICE_ENTITY)
             if config[CONF_PRICE_MODE] == PRICE_MODE_ENTITY
@@ -158,6 +161,8 @@ class ChargeTracker:
         # restored session, then the price, then power drives transitions.
         if self.energy_entity:
             self.machine.update_energy(now, self._read_energy())
+        if self.odometer_entity:
+            self.machine.update_odometer(now, self._read_odometer())
         if self._fixed_price is not None:
             self.machine.update_price(now, self._fixed_price)
         else:
@@ -171,6 +176,8 @@ class ChargeTracker:
             self._track(self.energy_entity, self._on_energy)
         if self.price_entity:
             self._track(self.price_entity, self._on_price)
+        if self.odometer_entity:
+            self._track(self.odometer_entity, self._on_odometer)
         self._unsubs.append(
             async_track_time_interval(self.hass, self._on_tick, TICK_INTERVAL)
         )
@@ -207,6 +214,11 @@ class ChargeTracker:
     def _read_energy(self) -> float | None:
         return _convert(self._state(self.energy_entity), EnergyConverter, "kWh", "kWh")
 
+    def _read_odometer(self) -> float | None:
+        return _convert(
+            self._state(self.odometer_entity), DistanceConverter, "km", "km"
+        )
+
     def _track(
         self, entity_id: str, action: Callable[[Event[EventStateChangedData]], None]
     ) -> None:
@@ -231,6 +243,12 @@ class ChargeTracker:
         self._publish(self.machine.check(now))
 
     @callback
+    def _on_odometer(self, event: Event[EventStateChangedData]) -> None:
+        now = dt_util.utcnow()
+        self.machine.update_odometer(now, self._read_odometer())
+        self._publish(self.machine.check(now))
+
+    @callback
     def _on_tick(self, now: datetime) -> None:
         self._publish(self.machine.check(now))
 
@@ -250,8 +268,15 @@ class ChargeTracker:
             }
             if event is SessionEvent.STARTED:
                 payload["start"] = session.start.isoformat()
+                if self.odometer_entity:
+                    # Per-100 km figures only make sense once energy is charged.
+                    distance = session.distance_summary()
+                    payload["odometer_km"] = distance["odometer_km"]
+                    payload["distance_km"] = distance["distance_km"]
             else:
                 payload.update(session.summary(), currency=self.currency)
+                if self.odometer_entity:
+                    payload.update(session.distance_summary())
             if event is SessionEvent.ENDED:
                 self.history = [*self.history, session][-MAX_HISTORY:]
                 self._history_store.async_delay_save(self._history_snapshot, 1)

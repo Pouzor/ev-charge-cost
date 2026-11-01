@@ -31,6 +31,10 @@ One config entry = one charge point. Multiple instances are supported.
 | Name | text | yes | `Recharge VE` |
 | Power sensor | entity selector (`sensor`, device_class `power`) | yes | — |
 | Cumulative energy sensor | entity selector (`sensor`, device_class `energy`) | no | — |
+| Odometer | entity selector (`sensor`, device_class `distance`) | no | — |
+
+The odometer (car mileage, any length unit, converted to km) enables the
+distance and consumption figures of §5bis.
 
 The power sensor is the entry's unique ID: the same sensor cannot be tracked
 twice.
@@ -121,6 +125,29 @@ session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
 - The session keeps its list of price tranches
   (`[{from, to, price, kwh, cost}]`) for auditing.
 
+## 5bis. Distance and consumption (optional odometer)
+
+The km driven between two charges are attributed to the **later** charge: it
+replenishes the energy consumed on them, and the figures are known as soon as
+it starts (past sessions are never rewritten).
+
+- Each session records the odometer: read when the session starts, then
+  replaced by any newer reading while power is drawn (`PENDING_START` /
+  `CHARGING`) — cloud car integrations often refresh the odometer only after
+  the car is plugged in. Readings during `PENDING_STOP` are ignored (the car
+  may already be driving).
+- `distance_km = odometer − odometer of the previous kept session`.
+  - No previous kept session (first charge), an odometer unknown during the
+    previous session, or a decreasing odometer → `distance_km: null`.
+  - A discarded session does not move the reference.
+- `kwh_per_100km = energy_kwh / distance_km × 100` and
+  `cost_per_100km = cost / distance_km × 100`; `null` when the distance is
+  unknown or 0. The energy is the one measured at the outlet, charging losses
+  included.
+- Charging elsewhere (public chargers) is not seen: the distance then covers
+  energy not measured here, and the consumption is underestimated.
+- The odometer reference is persisted with the session state.
+
 ## 6. Entities (per charge point)
 
 | Entity | Type | Description |
@@ -135,7 +162,10 @@ session_cost += delta_kWh × kWh_price_in_effect_when_the_delta_occurred
 | `sensor.<name>_total_energy` | kWh, `total_increasing` | Sum over all sessions (usable in the Energy dashboard) |
 | `sensor.<name>_total_cost` | €, `total` | Sum of costs; `last_reset` is set by `reset_totals` so statistics do not record a negative cost |
 | `sensor.<name>_sessions` | counter | Number of kept sessions |
-| `calendar.<name>_charge_history` | calendar | One event per completed session (summary `⚡ kWh · cost`, description with duration, average price and tranches); `on` with the session in progress while charging |
+| `sensor.<name>_last_session_distance` | km | Distance driven before the last session (odometer only) |
+| `sensor.<name>_last_session_consumption` | kWh/100 km, `measurement` | Energy of the last session per 100 km (odometer only) |
+| `sensor.<name>_last_session_cost_per_100_km` | <currency>/100 km, `measurement` | Cost of the last session per 100 km (odometer only) |
+| `calendar.<name>_charge_history` | calendar | One event per completed session (summary `⚡ kWh · cost[ · km]`, description with duration, average price, distance, kWh/100 km, cost/100 km and tranches); `on` with the session in progress while charging |
 | `sensor.<name>_current_price` | <currency>/kWh (diagnostic) | Price currently applied (fixed or entity) |
 
 All entities belong to one service device named after the charge point.
@@ -150,6 +180,9 @@ entry_id: "…"
 name: "Recharge VE"
 power_entity: sensor.pinces_consommation_power_b
 start: "2026-10-30T21:43:10+01:00"
+# With an odometer only (see §5bis); `ended` carries the final figures.
+odometer_km: 950.0
+distance_km: 150.0
 ```
 
 ### `ev_charge_cost_charge_ended`
@@ -165,6 +198,11 @@ cost: 4.19
 currency: EUR  # Home Assistant currency
 avg_price: 0.1835
 price_estimated: false
+# With an odometer only (see §5bis):
+odometer_km: 950.0
+distance_km: 150.0
+kwh_per_100km: 15.23
+cost_per_100km: 2.79
 tranches:
   - {from: "2026-10-30T21:43:10+01:00", to: "2026-10-30T22:00:00+01:00", price: 0.2516, kwh: 1.05, cost: 0.26}
   - {from: "2026-10-30T22:00:00+01:00", to: "2026-10-31T04:12:40+01:00", price: 0.1802, kwh: 21.79, cost: 3.93}
@@ -204,7 +242,8 @@ Both take a `config_entry_id` field (charge point selector).
 ### Blueprint
 
 `blueprints/charge_ended_notification.yaml` (automation) notifies a mobile
-device with the energy, cost and duration when a session ends. It is copied
+device with the energy, cost and duration when a session ends, plus the
+distance and per-100 km figures when known. It is copied
 to `<config>/blueprints/automation/ev_charge_cost/` at startup when missing;
 an existing file is never overwritten.
 

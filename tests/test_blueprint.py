@@ -77,6 +77,43 @@ async def test_blueprint_message(
     )
 
 
+async def test_blueprint_message_with_distance(hass: HomeAssistant) -> None:
+    config = BlueprintInputs(
+        _blueprint(),
+        {
+            "use_blueprint": {
+                "path": "ev_charge_cost/charge_ended_notification.yaml",
+                "input": {"charge_point": "entry123", "notify_device": "device123"},
+            }
+        },
+    ).async_substitute()
+    variables_step, notify_step = config["actions"]
+    variables = {
+        "trigger": {
+            "event": {
+                "data": {
+                    "name": "Recharge VE",
+                    "energy_kwh": 22.5,
+                    "cost": 5.62,
+                    "currency": "EUR",
+                    "duration_s": 3600,
+                    "avg_price": 0.25,
+                    "distance_km": 150.0,
+                    "kwh_per_100km": 15.0,
+                    "cost_per_100km": 3.75,
+                }
+            }
+        }
+    }
+    for name, value in variables_step["variables"].items():
+        variables[name] = Template(value, hass).async_render(variables)
+    message = Template(notify_step["message"], hass).async_render(variables)
+    assert message == (
+        "Recharge VE: 22.5 kWh, 5.62 EUR in 1h00 (avg 0.2500 EUR/kWh). "
+        "150 km since the previous charge: 15.0 kWh/100 km, 3.75 EUR/100 km."
+    )
+
+
 def test_install_copies_without_overwriting(tmp_path: Path):
     assert _install(tmp_path) == ["charge_ended_notification.yaml"]
     installed = tmp_path / "charge_ended_notification.yaml"
